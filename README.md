@@ -7,7 +7,7 @@ Have loaded the code from Maine lobster model that does the following:
 + Calibrates model to 2011 landings.
 + Uses 2012 data as a shock and then estimates fishermen response.
 
-## Connecting bio to eco
+## Connecting bio to econ
 
 + R model should run for a given climate scenario.
 + R calls GAMS and passes in data using system() command.
