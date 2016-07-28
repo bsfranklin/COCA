@@ -37,12 +37,16 @@ scenarios <- stack(spring.2015.prediction.stack[[1]],
 
 scenarios.in.footprint <- mask(scenarios, footprint, maskvalue=0)
 
-new.footprint <- scenarios.in.footprint[[1]] 
 
-##### build two raster stacks describing biomass per tow (kg/tow) and ((kg/tow)*area)
+##### build a raster stack describing back-transformed predictions of biomass per tow (kg/tow) 
 
-kg.tow.stack <- stack()
+kg.tow.stack <- (exp(scenarios.in.footprint)) - 1
+
+
+##### build a raster stack describing area-weighted biomass ((kg/tow)*area)
+
 kg.tow.area.stack <- stack()
+new.footprint <- scenarios.in.footprint[[1]] 
 
 for (i in 1:5){
   
@@ -52,8 +56,8 @@ for (i in 1:5){
 
   ##### generate index of biomass that accounts for polygon areas (kg/tow)*km2
 
-  my.calc <- exp.scenarios.in.footprint[eq.area.filter@data$ID + 1] * areas
-  kg.tow.area <- footprint
+  my.calc <- original[eq.area.filter@data$ID + 1] * areas
+  kg.tow.area <- new.footprint
   kg.tow.area[eq.area.filter@data$ID + 1] <- my.calc
   kg.tow.area.stack <- stack(kg.tow.area.stack, kg.tow.area)
   
@@ -64,18 +68,30 @@ for (i in 1:5){
 
 p <- "+proj=aea +lat_1=30 +lat_2=45 +lat_0=37.5 +lon_0=-71 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"
 
-eq.area.exp.scenarios <- projectRaster(kg.tow.area.stack, crs=p)
+eq.area.kg.tow.stack <- projectRaster(kg.tow.stack, crs=p)
 s.names <- c("2015", "+1C full dispersal", "+1C no dispersal", "+2C full dispersal", "+2C no dispersal")
-names(eq.area.exp.scenarios) <- s.names
-writeRaster(eq.area.exp.scenarios, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_spring_scenarios.grd", overwrite=T)
+names(eq.area.kg.tow.stack) <- s.names
+writeRaster(eq.area.kg.tow.stack, "I:/jschuetz/Documents/SESYNC/Output/kg_per_tow_SVSPP_301_spring_scenarios.grd", overwrite=T)
+
+eq.area.kg.tow.area.stack <- projectRaster(kg.tow.area.stack, crs=p)
+names(eq.area.kg.tow.area.stack) <- s.names
+writeRaster(eq.area.kg.tow.area.stack, "I:/jschuetz/Documents/SESYNC/Output/biomass_index_SVSPP_301_spring_scenarios.grd", overwrite=T)
 
 
 ##### sum biomass predictions/projections across fishing footprint and scale relative to current biomass
 
-availability <- data.frame(cellStats(eq.area.exp.scenarios, sum)/cellStats(eq.area.exp.scenarios[[1]], sum))
-for.gams <- cbind(availability, s.names)
-names(for.gams) <- c("relative availability within ME", "scenario")
-write.csv(for.gams, "C:/Users/jschuetz/Documents/Sandbox/COCA/SVSPP_301_spring_scenarios_for_GAMSa.csv", row.names=F)
+rate <- data.frame(cellStats(eq.area.kg.tow.area.stack, mean)/cellStats(eq.area.kg.tow.area.stack[[1]], mean))
+for.gams <- cbind(rate, s.names)
+names(for.gams) <- c("relative catch per tow within ME", "scenario")
+write.csv(for.gams, "C:/Users/jschuetz/Documents/Sandbox/COCA/kg_per_tow_SVSPP_301_spring_scenarios_for_GAMS.csv", row.names=F)
+
+
+##### sum biomass predictions/projections across fishing footprint and scale relative to current biomass
+
+available <- data.frame(cellStats(eq.area.kg.tow.area.stack, sum)/cellStats(eq.area.kg.tow.area.stack[[1]], sum))
+for.gams <- cbind(available, s.names)
+names(for.gams) <- c("relative biomass within ME", "scenario")
+write.csv(for.gams, "C:/Users/jschuetz/Documents/Sandbox/COCA/biomass_SVSPP_301_spring_scenarios_for_GAMS.csv", row.names=F)
 
 
 
