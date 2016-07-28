@@ -80,7 +80,7 @@ writeRaster(eq.area.kg.tow.area.stack, "I:/jschuetz/Documents/SESYNC/Output/biom
 
 ##### sum biomass predictions/projections across fishing footprint and scale relative to current biomass
 
-rate <- data.frame(cellStats(eq.area.kg.tow.area.stack, mean)/cellStats(eq.area.kg.tow.area.stack[[1]], mean))
+rate <- data.frame(cellStats(eq.area.kg.tow.stack, mean)/cellStats(eq.area.kg.tow.stack[[1]], mean))
 for.gams <- cbind(rate, s.names)
 names(for.gams) <- c("relative catch per tow within ME", "scenario")
 write.csv(for.gams, "C:/Users/jschuetz/Documents/Sandbox/COCA/kg_per_tow_SVSPP_301_spring_scenarios_for_GAMS.csv", row.names=F)
