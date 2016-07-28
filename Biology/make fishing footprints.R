@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 load("I:/jschuetz/Documents/SESYNC/R/SESYNC.RData")
 
 
@@ -21,7 +20,6 @@ ocean <- readOGR(dsn = "I:/jschuetz/Documents/SESYNC/GIS",
                  verbose = FALSE)
 
 
-
 ##### approach for filtering locations that are within 1km of Natural Earth ocean and assigning ID
 
 vtr.data$LAT_JGS <- vtr.data$CALC_LAT_DEG + vtr.data$CALC_LAT_MIN/60
@@ -29,7 +27,6 @@ vtr.data$LON_JGS <- -1*(vtr.data$CALC_LON_DEG + vtr.data$CALC_LON_MIN/60)
 
 my.data <- vtr.data[vtr.data$SVSPP == 301 & vtr.data$STATE_CODE == 22,]
 port.locs <- port.locs[port.locs$STATE == "ME", ]
-
 
 
 ##### summarize kept catch 
@@ -43,8 +40,6 @@ ids <- over(locations, filter)
 ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
 locations@data$ID <- ids$ID # assign raster cell number to lat lons
 footprints.all <- aggregate(KEPT ~ ID + PORT_CODE, locations, sum)
-
-
 
 
 ##### loop across ports and save kept catch results to a raster stack
@@ -67,9 +62,7 @@ names(kept.stack) <- layer.names
 writeRaster(kept.stack, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_KEPT_CATCH_BY_MAINE_PORT.grd", overwrite=T)
 
 
-
-
-#####
+##### aggregate trips in pixels
 
 catch.locs.by.port <- NULL
 catch.locs.by.port <- aggregate(KEPT ~ SUB_TRIP_ID + LAT_JGS + LON_JGS + PORT_CODE + VP_NUM + VTR_YEAR, my.data, sum)
@@ -85,8 +78,7 @@ vp.nums.all <- aggregate(SUB_TRIP_ID ~ ID + PORT_CODE + VP_NUM, locations, lengt
 trips.all <- aggregate(SUB_TRIP_ID ~ ID + PORT_CODE, vp.nums.all, sum) # total sub trips within pixel
 
 
-
-
+##### loop across ports and save kept catch results to a raster stack
 
 trips.stack <- stack()
 
@@ -106,11 +98,9 @@ names(trips.stack) <- layer.names
 writeRaster(trips.stack, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_TOTAL_SUB_TRIPS_BY_MAINE_PORT.grd", overwrite=T)
 
 
-
 ##### calculate lbs of kept catch per trip in each pixel
 
 kept.per.trip<-kept.stack/trips.stack
-
 writeRaster(kept.per.trip, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_CATCH_PER_TRIP_MAINE_PORTS.grd")
 
 
@@ -121,10 +111,7 @@ plot(fall.2015.biomass[[1]], col=my.palette)
 plot(ocean, add=T, border="gray50")
 
 
-
-
 ##### which cells contain maine ports?
-
 
 locations <- SpatialPointsDataFrame(coords=port.locs[, c(5,6)], data=port.locs[,c(1:4)])
 proj4string(locations) <- proj4string(sst)
