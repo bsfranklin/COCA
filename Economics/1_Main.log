@@ -1,0 +1,280 @@
+
+--- Job 1_Main.gms Start 07/29/16 11:26:13 24.7.1 r56632 WEX-WEI x86 64bit/MS Windows
+GAMS 24.7.1   Copyright (C) 1987-2016 GAMS Development. All rights reserved
+Licensee: GAMS Development Corporation, Washington, DC   G871201/0000CA-ANY
+          Free Demo,  202-342-0180,  sales@gams.com,  www.gams.com   DC0000
+--- Starting compilation
+--- 1_Main.gms(8) 2 Mb
+--- .2_Data.gms(28) 3 Mb
+--- call GDXXRW.EXE "2_lobster_data.xls" Index=Index!a1
+
+GDXXRW           24.7.1 r56632 Released Mar 14, 2016 VS8 x86 32bit/MS Windows 
+Input file : C:\SESYNC\COCA\Economics\2_lobster_data.xls
+Output file: C:\SESYNC\COCA\Economics\2_lobster_data.gdx
+Substituting Index
+Total time = 624 Ms
+--- .2_Data.gms(56) 3 Mb
+--- GDXin=C:\SESYNC\COCA\Economics\2_lobster_data.gdx
+--- .2_Data.gms(233) 3 Mb
+--- 1_Main.gms(9) 3 Mb
+--- .3_Model.gms(119) 3 Mb
+--- 1_Main.gms(89) 3 Mb
+--- .4_report.gms(75) 3 Mb
+--- 1_Main.gms(163) 3 Mb
+--- Starting execution: elapsed 0:00:00.683
+--- 1_Main.gms(180) 4 Mb
+--- Generating NLP model LSUPPLY
+--- 1_Main.gms(183) 6 Mb
+---   13 rows  15 columns  49 non-zeroes
+---   74 nl-code  12 nl-non-zeroes
+--- 1_Main.gms(183) 4 Mb
+--- Executing CONOPT: elapsed 0:00:00.700
+CONOPT 3         24.7.1 r56632 Released Mar 14, 2016 WEI x86 64bit/MS Windows 
+ 
+ 
+    C O N O P T 3   version 3.17A
+    Copyright (C)   ARKI Consulting and Development A/S
+                    Bagsvaerdvej 246 A
+                    DK-2880 Bagsvaerd, Denmark
+ 
+ 
+   Iter Phase Ninf   Infeasibility   RGmax    NSB   Step InItr MX OK
+      0   0        8.4097377303E+02 (Input point)
+ 
+                   Pre-triangular equations:   0
+                   Post-triangular equations:  1
+ 
+      1   0        9.4636401348E+01 (After pre-processing)
+      2   0        2.3659100337E+01 (After scaling)
+ 
+ ** Feasible solution. Value of objective =    746.337371679
+ 
+   Iter Phase Ninf     Objective     RGmax    NSB   Step InItr MX OK
+     11   4        7.3135880395E+01 6.3E-13     1
+ 
+ ** Optimal solution. Reduced gradient less than tolerance.
+ 
+--- Restarting execution
+--- 1_Main.gms(183) 2 Mb
+--- Reading solution for model LSUPPLY
+--- Executing after solve: elapsed 0:00:00.799
+--- 1_Main.gms(386) 3 Mb
+--- Generating NLP model Lobster
+--- 1_Main.gms(422) 5 Mb
+--- LOOPS bs = zero
+---   241 rows  241 columns  649 non-zeroes
+---   434 nl-code  132 nl-non-zeroes
+--- 1_Main.gms(422) 3 Mb
+--- Executing CONOPT: elapsed 0:00:00.815
+CONOPT 3         24.7.1 r56632 Released Mar 14, 2016 WEI x86 64bit/MS Windows 
+ 
+ 
+    C O N O P T 3   version 3.17A
+    Copyright (C)   ARKI Consulting and Development A/S
+                    Bagsvaerdvej 246 A
+                    DK-2880 Bagsvaerd, Denmark
+ 
+ 
+   Iter Phase Ninf   Infeasibility   RGmax    NSB   Step InItr MX OK
+      0   0        3.5840218959E+05 (Input point)
+ 
+                   Pre-triangular equations:   0
+                   Post-triangular equations:  117
+                   Definitional equations:     76
+ 
+      1   0        0.0000000000E+00 (After pre-processing)
+      2   0        0.0000000000E+00 (After scaling)
+ 
+ ** Feasible solution. Value of objective =    233123.840064
+ 
+   Iter Phase Ninf     Objective     RGmax    NSB   Step InItr MX OK
+      6   3        2.3319147111E+05 1.8E+02    34 9.5E-02    1 F  T
+     11   4        2.3319250044E+05 2.7E-02    34 1.0E+00    9 F  T
+     14   4        2.3319250044E+05 6.6E-08    34
+ 
+ ** Optimal solution. Reduced gradient less than tolerance.
+ 
+--- Restarting execution
+--- 1_Main.gms(422) 2 Mb
+--- Reading solution for model Lobster
+--- Executing after solve: elapsed 0:00:00.954
+--- 1_Main.gms(386) 3 Mb
+--- Generating NLP model Lobster
+--- 1_Main.gms(422) 5 Mb
+--- LOOPS bs = p1nodisp
+---   241 rows  241 columns  649 non-zeroes
+---   434 nl-code  132 nl-non-zeroes
+--- 1_Main.gms(422) 3 Mb
+--- Executing CONOPT: elapsed 0:00:00.972
+CONOPT 3         24.7.1 r56632 Released Mar 14, 2016 WEI x86 64bit/MS Windows 
+ 
+ 
+    C O N O P T 3   version 3.17A
+    Copyright (C)   ARKI Consulting and Development A/S
+                    Bagsvaerdvej 246 A
+                    DK-2880 Bagsvaerd, Denmark
+ 
+ 
+   Iter Phase Ninf   Infeasibility   RGmax    NSB   Step InItr MX OK
+      0   0        7.5241554238E+04 (Input point)
+ 
+                   Pre-triangular equations:   0
+                   Post-triangular equations:  117
+                   Definitional equations:     76
+ 
+      1   0        0.0000000000E+00 (After pre-processing)
+      2   0        0.0000000000E+00 (After scaling)
+ 
+ ** Feasible solution. Value of objective =   -9113.54088670
+ 
+   Iter Phase Ninf     Objective     RGmax    NSB   Step InItr MX OK
+      6   3        2.3606332398E+04 3.3E+02    23 1.0E+00    9 T  T
+     11   3        2.4044047056E+04 3.9E-01     3 6.1E-04      F  T
+     15   4        2.4044300720E+04 4.5E-12     3
+ 
+ ** Optimal solution. Reduced gradient less than tolerance.
+ 
+--- Restarting execution
+--- 1_Main.gms(422) 2 Mb
+--- Reading solution for model Lobster
+--- Executing after solve: elapsed 0:00:01.088
+--- 1_Main.gms(386) 3 Mb
+--- Generating NLP model Lobster
+--- 1_Main.gms(422) 5 Mb
+--- LOOPS bs = p1full
+---   241 rows  241 columns  649 non-zeroes
+---   434 nl-code  132 nl-non-zeroes
+--- 1_Main.gms(422) 3 Mb
+--- Executing CONOPT: elapsed 0:00:01.105
+CONOPT 3         24.7.1 r56632 Released Mar 14, 2016 WEI x86 64bit/MS Windows 
+ 
+ 
+    C O N O P T 3   version 3.17A
+    Copyright (C)   ARKI Consulting and Development A/S
+                    Bagsvaerdvej 246 A
+                    DK-2880 Bagsvaerd, Denmark
+ 
+ 
+   Iter Phase Ninf   Infeasibility   RGmax    NSB   Step InItr MX OK
+      0   0        2.2668505827E+05 (Input point)
+ 
+                   Pre-triangular equations:   0
+                   Post-triangular equations:  117
+                   Definitional equations:     76
+ 
+      1   0        0.0000000000E+00 (After pre-processing)
+      2   0        0.0000000000E+00 (After scaling)
+ 
+ ** Feasible solution. Value of objective =   -14079.2537309
+ 
+   Iter Phase Ninf     Objective     RGmax    NSB   Step InItr MX OK
+      6   3        1.9680910584E+04 3.5E+02    23 1.0E+00    9 T  T
+     11   3        2.0112929324E+04 2.3E-01     3 7.3E-01      F  T
+     14   4        2.0113033686E+04 4.7E-09     3
+ 
+ ** Optimal solution. Reduced gradient less than tolerance.
+ 
+--- Restarting execution
+--- 1_Main.gms(422) 2 Mb
+--- Reading solution for model Lobster
+--- Executing after solve: elapsed 0:00:01.308
+--- 1_Main.gms(386) 3 Mb
+--- Generating NLP model Lobster
+--- 1_Main.gms(422) 5 Mb
+--- LOOPS bs = p2nodisp
+---   241 rows  241 columns  649 non-zeroes
+---   434 nl-code  132 nl-non-zeroes
+--- 1_Main.gms(422) 3 Mb
+--- Executing CONOPT: elapsed 0:00:01.325
+CONOPT 3         24.7.1 r56632 Released Mar 14, 2016 WEI x86 64bit/MS Windows 
+ 
+ 
+    C O N O P T 3   version 3.17A
+    Copyright (C)   ARKI Consulting and Development A/S
+                    Bagsvaerdvej 246 A
+                    DK-2880 Bagsvaerd, Denmark
+ 
+ 
+   Iter Phase Ninf   Infeasibility   RGmax    NSB   Step InItr MX OK
+      0   0        2.2672793177E+05 (Input point)
+ 
+                   Pre-triangular equations:   0
+                   Post-triangular equations:  117
+                   Definitional equations:     76
+ 
+      1   0        0.0000000000E+00 (After pre-processing)
+      2   0        0.0000000000E+00 (After scaling)
+ 
+ ** Feasible solution. Value of objective =   -34275.7358219
+ 
+   Iter Phase Ninf     Objective     RGmax    NSB   Step InItr MX OK
+      6   3        3.6143036306E+03 5.6E+02    20 1.0E+00    9 T  T
+      8   3        4.1454180000E+03 0.0E+00     0
+ 
+ ** Optimal solution. There are no superbasic variables.
+ 
+--- Restarting execution
+--- 1_Main.gms(422) 2 Mb
+--- Reading solution for model Lobster
+--- Executing after solve: elapsed 0:00:01.501
+--- 1_Main.gms(386) 3 Mb
+--- Generating NLP model Lobster
+--- 1_Main.gms(422) 5 Mb
+--- LOOPS bs = p2full
+---   241 rows  241 columns  649 non-zeroes
+---   434 nl-code  132 nl-non-zeroes
+--- 1_Main.gms(422) 3 Mb
+--- Executing CONOPT: elapsed 0:00:01.519
+CONOPT 3         24.7.1 r56632 Released Mar 14, 2016 WEI x86 64bit/MS Windows 
+ 
+ 
+    C O N O P T 3   version 3.17A
+    Copyright (C)   ARKI Consulting and Development A/S
+                    Bagsvaerdvej 246 A
+                    DK-2880 Bagsvaerd, Denmark
+ 
+ 
+   Iter Phase Ninf   Infeasibility   RGmax    NSB   Step InItr MX OK
+      0   0        2.2679196694E+05 (Input point)
+ 
+                   Pre-triangular equations:   0
+                   Post-triangular equations:  117
+                   Definitional equations:     76
+ 
+      1   0        0.0000000000E+00 (After pre-processing)
+      2   0        0.0000000000E+00 (After scaling)
+ 
+ ** Feasible solution. Value of objective =   -44684.7972090
+ 
+   Iter Phase Ninf     Objective     RGmax    NSB   Step InItr MX OK
+      6   3       -4.2573120427E+03 5.0E+02    19 1.0E+00   12 T  T
+      8   3       -4.0740272183E+03 0.0E+00     0
+ 
+ ** Optimal solution. There are no superbasic variables.
+ 
+--- Restarting execution
+--- 1_Main.gms(422) 2 Mb
+--- Reading solution for model Lobster
+--- Executing after solve: elapsed 0:00:01.656
+--- 1_Main.gms(554) 3 Mb
+--- GDX File C:\SESYNC\COCA\Economics\4_Output.gdx
+--- 1_Main.gms(555) 3 Mb
+
+GDXXRW           24.7.1 r56632 Released Mar 14, 2016 VS8 x86 32bit/MS Windows 
+Input file : C:\SESYNC\COCA\Economics\4_Output.gdx
+Output file: C:\SESYNC\COCA\Economics\4_Output.xls
+Total time = 608 Ms
+--- 1_Main.gms(556) 3 Mb
+
+GDXXRW           24.7.1 r56632 Released Mar 14, 2016 VS8 x86 32bit/MS Windows 
+Input file : C:\SESYNC\COCA\Economics\4_Output.gdx
+Output file: C:\SESYNC\COCA\Economics\4_Output.xls
+Total time = 624 Ms
+--- 1_Main.gms(557) 3 Mb
+
+GDXXRW           24.7.1 r56632 Released Mar 14, 2016 VS8 x86 32bit/MS Windows 
+Input file : C:\SESYNC\COCA\Economics\4_Output.gdx
+Output file: C:\SESYNC\COCA\Economics\4_Output.xls
+Total time = 624 Ms
+*** Status: Normal completion
+--- Job 1_Main.gms Stop 07/29/16 11:26:16 elapsed 0:00:03.643

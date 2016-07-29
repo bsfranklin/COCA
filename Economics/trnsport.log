@@ -1,0 +1,44 @@
+
+--- Job trnsport.gms Start 07/28/16 15:08:38 24.7.1 r56632 WEX-WEI x86 64bit/MS Windows
+GAMS 24.7.1   Copyright (C) 1987-2016 GAMS Development. All rights reserved
+Licensee: GAMS Development Corporation, Washington, DC   G871201/0000CA-ANY
+          Free Demo,  202-342-0180,  sales@gams.com,  www.gams.com   DC0000
+--- Starting compilation
+--- trnsport.gms(69) 3 Mb
+--- Starting execution: elapsed 0:00:00.005
+--- trnsport.gms(45) 4 Mb
+--- Generating LP model transport
+--- trnsport.gms(66) 4 Mb
+---   6 rows  7 columns  19 non-zeroes
+--- Executing CPLEX: elapsed 0:00:00.021
+
+IBM ILOG CPLEX   24.7.1 r56632 Released Mar 14, 2016 WEI x86 64bit/MS Windows 
+Cplex 12.6.3.0
+
+Reading data...
+Starting Cplex...
+Space for names approximately 0.00 Mb
+Use option 'names no' to turn use of names off
+Tried aggregator 1 time.
+LP Presolve eliminated 1 rows and 1 columns.
+Reduced LP has 5 rows, 6 columns, and 12 nonzeros.
+Presolve time = 0.00 sec. (0.00 ticks)
+
+Iteration      Dual Objective            In Variable           Out Variable
+     1              73.125000    x(seattle.new-york) demand(new-york) slack
+     2             119.025000     x(seattle.chicago)  demand(chicago) slack
+     3             153.675000    x(san-diego.topeka)   demand(topeka) slack
+     4             153.675000  x(san-diego.new-york)  supply(seattle) slack
+LP status(1): optimal
+Cplex Time: 0.00sec (det. 0.01 ticks)
+
+Optimal solution found.
+Objective :         153.675000
+
+--- Restarting execution
+--- trnsport.gms(66) 2 Mb
+--- Reading solution for model transport
+--- Executing after solve: elapsed 0:00:00.141
+--- trnsport.gms(68) 3 Mb
+*** Status: Normal completion
+--- Job trnsport.gms Stop 07/28/16 15:08:38 elapsed 0:00:00.150

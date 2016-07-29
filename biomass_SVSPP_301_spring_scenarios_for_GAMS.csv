@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 "relative biomass within ME","scenario"
 1,"2015"
 0.436138069166208,"+0.5C full dispersal"
@@ -6,3 +7,11 @@
 0.255787579018614,"+1C no dispersal"
 0.203829700890087,"+2C full dispersal"
 0.174120584866282,"+2C no dispersal"
+=======
+scenario,relative biomass within ME
+2015,1
++1C full dispersal,0.272322863
++1C no dispersal,0.258187426
++2C full dispersal,0.203829701
++2C no dispersal,0.175131999
+>>>>>>> 24924b672977eae6493cd096e4dfafa288f3468f

@@ -121,7 +121,7 @@ PARAMETERS
 
  avgP(bs) = SUM(msel,         aggOut('p',bs,msel) )/CARD(msel);
  avgQ(bs) = SUM(msel,         aggOut('q',bs,msel) )/CARD(msel);
- avgS(bs) = SUM(msel,         aggOut('ps',bs,msel))/CARD(msel);
+ avgS(bs) = SUM(msel,         aggOut('ts',bs,msel))/CARD(msel);
 
 
 Execute_Unload '4_Output.gdx', avgP, avgQ,avgS;
