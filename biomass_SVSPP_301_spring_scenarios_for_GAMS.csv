@@ -1,6 +1,6 @@
-"relative biomass within ME","scenario"
-1,"2015"
-0.272322863463913,"+1C full dispersal"
-0.258187426183369,"+1C no dispersal"
-0.203829700890087,"+2C full dispersal"
-0.175131999254793,"+2C no dispersal"
+scenario,relative biomass within ME
+2015,1
++1C full dispersal,0.272322863
++1C no dispersal,0.258187426
++2C full dispersal,0.203829701
++2C no dispersal,0.175131999

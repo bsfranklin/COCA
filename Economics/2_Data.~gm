@@ -204,7 +204,6 @@ DISPLAY wbar,b0,b1;
 
          out(*,bs,msel, size)
          aggOut(*,bs,msel)
-         implan(*,bs,size)         ' values to plug into IMPLAN                              '
 
          del(*, msel,size)           ' change in variables btwn scenarios                      '
          aggDel(*, msel)             ' change in agg variables btwn scenarios                  '
@@ -213,7 +212,7 @@ DISPLAY wbar,b0,b1;
          ar(msel, size)              ' average  revenue                                        '
          ac(msel, size)              ' average  cost                                           '
          devObs(*,scen, msel)        ' deviation from observed data                            '
-
+         implan(*,scen,size)         ' values to plug into IMPLAN                              '
 ;
 
 PARAMETER        cadj(mo)        adjustment to operating costs;

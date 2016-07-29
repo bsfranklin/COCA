@@ -1,0 +1,203 @@
+GAMS 24.7.1  r56632 Released Mar 14, 2016 WEX-WEI x86 64bit/MS Windows                                                                                                                                                                 07/29/16 09:12:15 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+   1  *************************************************************
+   2  *** CALIBRATION
+   3   
+   4  * OPTIONS *
+   6   
+   7  ** DATA & MODEL Statement
+   8  $INCLUDE "J:\Research\2015_2018_COCA\3_Program\Lobster_GAMS\2_data.gms"
+****                                                                        $282
+   9   
+  10   totCatch(msel)        = SUM(size,  catchPerTrip(msel,size) * trips(msel,size) *  participation(msel,size) );
+****          $140 $120               $120           $140               $140                        $140
+  11   totHrs(msel)          = SUM(size,  tripHrs(msel, size) * participation(msel,size));
+****        $140                                $140
+  12   
+      * @@@ TRY USING AVERAGE 2011-12 data
+       
+       totCatch(msel)           = 0.5*SUM(scen,  scenProd(scen,msel) );
+       trips(msel,size)         = 0.5*SUM(scen,  scenTrips(scen,msel,size) );
+       totHrs(msel)             = 0.5*SUM((scen, size), freq(size) * days(size) * hrsPerTrip(size)  * trips(msel,size));
+       catchPerTrip(msel,size)  = 0.5*SUM(scen, scenCatch(scen,msel,size));
+       participation(msel,size) = 0.5*SUM(scen, scenParticipation(scen, msel, size));
+  22   
+  23   p_pre(msel)           = a0(msel)  +  a1(msel)*totCatch(msel);
+****       $140                 $140         $140
+  24   w_pre(msel)           = b0 + b1 * totHrs(msel);
+****       $140                 $140 $140
+  25   
+  26   profit_pre(msel,size) =  p_pre(msel) * catchPerTrip(msel,size)*trips(msel,size)
+****            $140
+  27                          - w_pre(msel) * tripHrs(msel, size)
+  28                          - (baitCostPerTrip(msel,size)  + fuelCostPerMile(size) * dist(msel,size)) * trips(msel,size) -  0.4 * fixedCost(msel,size) ;
+****                                           $140                          $140         $140                                              $140
+  29   
+  30  DISPLAY profit_pre,lsup;
+****                        $140
+  31   
+  32  *****************************************************
+  33  ** VARIABLES && MODEL
+  34  FREE VARIABLES
+  35   Z                        'maximand'
+  36  ;
+  37   
+  38  POSITIVE VARIABLES
+  39   K(msel,size)              'capital = number of boats '
+  40   
+  41   NLC(msel,size)          'Non-Labor costs'
+  42   
+  43   L(msel, size)             'labor demand = labor days * number of boats'
+  44   LD(msel)                  'Labor demand'
+  45   W(msel)
+  46   
+  47   X(msel, size)             'Landings'
+  48   Q(msel)                   'Qty supplied = total landings across all size classes'
+GAMS 24.7.1  r56632 Released Mar 14, 2016 WEX-WEI x86 64bit/MS Windows                                                                                                                                                                 07/29/16 09:12:15 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+  49   P(msel)
+  50  ;
+  51   
+  52  EQUATIONS
+  53   cal_obj_e                 'minimize MSE'
+  54   nlc_e(msel,size)          'non-labor costs'
+  55   
+  56   landings_e(msel, size)    'Total catch by vessel size'
+  57   q_e(msel)                 'quantity supplied'
+  58   price_demand(msel)
+  59   
+  60   l_e(msel, size)           'labor by size class'
+  61   ld_e(msel)                'labor demanded'
+  62   price_labor(msel)
+  63   
+  64   cal_con(msel, size)
+  65  ;
+  66   
+  67   
+  68  SCALAR           epsilon         small number /0.000001/;
+  69   
+  70  *     0.5 * (a0(msel) - P(msel)) * Q(msel)  +  0.5 * P(msel) * Q(msel)
+  71   
+  72   
+  73  a1('6') = 1.2 * a1('6');
+  74  a1('7') = 1.2 * a1('7');
+  75   
+  76  ***********************************************************
+  77   cal_obj_e..               Z                =E= SUM(msel, (a0(msel) + 0.5*a1(msel)* Q(msel))* Q(msel) - 0.5 * W(msel) * LD(msel) - SUM(size, NLC(msel,size))  );
+  78   
+  79   nlc_e(msel,size)..        NLC(msel,size)   =E= K(msel,size)*( baitCostPerTrip(msel,size)* trips(msel,size) + fuelCostPerMile(size)*dist(msel,size)*trips(msel,size) + 0.5 * cadj(msel) * fixedCost(msel,size));
+****                                                                                                                                                                                  $140
+  80   
+  81   landings_e(msel,size)..   X(msel,size)     =E= catchPerTrip(msel,size) * trips(msel,size) *  K(msel,size);
+  82   q_e(msel)..               Q(msel)          =E= SUM(size,  X(msel,size) );
+  83   price_demand(msel)..      P(msel)          =E= a0(msel)  +  a1(msel) * Q(msel) ;
+  84   
+  85   l_e(msel, size)..         L(msel, size)    =E= tripHrs(msel, size) * K(msel,size);
+  86   ld_e(msel)..              LD(msel)         =E= SUM(size,  L(msel,size) );
+  87   price_labor(msel)..       W(msel)           =E= b0 + b1 * LD(msel) ;
+  88   
+  89   cal_con(msel, size)..     K(msel,size)  + epsilon   =L= participation(msel,size);
+  90   
+  91   MODEL BoatCal /
+  92           cal_obj_e
+  93           nlc_e
+  94           landings_e
+  95           q_e
+  96           price_demand
+  97   
+  98           l_e
+  99           ld_e
+ 100           price_labor
+GAMS 24.7.1  r56632 Released Mar 14, 2016 WEX-WEI x86 64bit/MS Windows                                                                                                                                                                 07/29/16 09:12:15 Page 3
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+ 101   
+ 102           cal_con
+ 103   /;
+ 104   
+ 105   
+ 106   BoatCal.scaleopt= 1;
+ 107   
+ 108   K.L(msel,size)  = participation(msel,size);
+ 109   L.L(msel,size)  = tripHrs(msel, size)* trips(msel,size)* K.L(msel,size);
+ 110   LD.L(msel)      = SUM(size,  L.L(msel,size) )  ;
+ 111   
+ 112   X.L(msel,size)  = catchPerTrip(msel,size) * trips(msel,size) * K.L(msel,size);
+ 113   Q.L(msel)       = SUM(size,  X.L(msel,size) );
+ 114   
+ 115   Z.L             = SUM((msel, size),           p_pre(msel)*  Q.L(msel)
+ 116                   - 0.5 * w_pre(msel) * LD.L(msel)
+ 117                   - K.L(msel,size)*( baitCostPerTrip(msel,size)* trips(msel,size) + fuelCostPerMile(size)*dist(msel,size)*trips(msel,size) + fixedCost(msel,size))
+ 118   );
+ 119   
+ 120   SOLVE BoatCal Using NLP MAXIMIZING Z;
+****                                       $257
+ 121   
+ 122   PARAMETERS
+ 123                utilization(msel, size)     'boat utilization as ratio of optimal to baseline values'
+ 124                mr(msel, size)              'marginal revenue'
+ 125                mc(msel,size)               'marginal cost check'
+ 126                mpi(msel,size)              'marginal profit check'
+ 127  ;
+ 128   
+ 129    utilization(msel, size)  = K.L(msel,size)/participation(msel,size);
+ 130    c1(msel,size)  = 2*cal_con.m(msel,size)/K.L(msel,size);
+****     $140                      $141
+ 131    c0(msel,size)  = 0.5 * cadj(msel) * fixedCost(msel,size) - cal_con.m(msel,size)  ;
+****     $140
+ 132    mr(msel, size) = P.L(msel)* catchPerTrip(msel,size) * trips(msel,size);
+****                       $141
+ 133    mc(msel,size)  = baitCostPerTrip(msel,size)* trips(msel,size) + fuelCostPerMile(size)*dist(msel,size)*trips(msel,size) + c0(msel,size) + c1(msel,size)*K.L(msel,size) + 0.5 * W.L(msel) * tripHrs(msel,size);
+****                                                                                                                                                                                    $141
+ 134    mpi(msel,size) = mr(msel, size) -  mc(msel,size);
+ 135   
+ 136  *DISPLAY  p_pre,  w_pre, profit_pre,afixedCost, utilization, participation;
+ 137   DISPLAY utilization,participation, c0, c1, mc, mpi, cal_con.M, tripHrs;
+ 138   
+ 139   Execute_Unload '2_Lobster_data.gdx', c0,c1;
+****                                         $572,572
+ 140   Execute 'GDXXRW.EXE 2_Lobster_data.gdx Output=2_Lobster_data.xls par=c0 rng=calibration!b2';
+ 141   Execute 'GDXXRW.EXE 2_Lobster_data.gdx Output=2_Lobster_data.xls par=c1 rng=calibration!b17';
+ 142   
+ 143   
+GAMS 24.7.1  r56632 Released Mar 14, 2016 WEX-WEI x86 64bit/MS Windows                                                                                                                                                                 07/29/16 09:12:15 Page 4
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Error Messages
+
+
+120  Unknown identifier entered as set
+140  Unknown symbol
+141  Symbol declared but no values have been assigned. Check for missing
+        data definition, assignment, data loading or implicit assignment
+        via a solve statement.
+        A wild shot: You may have spurious commas in the explanatory
+        text of a declaration. Check symbol reference list.
+257  Solve statement not checked because of previous errors
+282  Unable to open include file
+572  Cannot GDX load/unload this type - only sets, parameters
+        equations and variables can be used
+
+**** 30 ERROR(S)   0 WARNING(S)
+
+
+COMPILATION TIME     =        4.836 SECONDS      3 MB  24.7.1 r56632 WEX-WEI
+
+
+USER: GAMS Development Corporation, Washington, DC   G871201/0000CA-ANY
+      Free Demo,  202-342-0180,  sales@gams.com,  www.gams.com   DC0000
+
+
+**** FILE SUMMARY
+
+Input      C:\SESYNC\COCA\Economics\0_Calibration.gms
+Output     C:\SESYNC\COCA\Economics\0_Calibration.lst
+
+**** USER ERROR(S) ENCOUNTERED
