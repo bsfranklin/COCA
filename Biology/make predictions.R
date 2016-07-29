@@ -6,7 +6,7 @@ library(gbm)
 
 load("I:/jschuetz/Documents/SESYNC/R/COCA_prediction_stacks.RData")
 
-scenario <- c("spring.2015", "fall.2015", "spring.1C", "fall.1C", "spring.2C", "fall.2C")
+scenario <- c("spring.2015", "fall.2015", "spring.0.5C", "fall.0.5C", "spring.1C", "fall.1C", "spring.2C", "fall.2C")
 
 spp.sesync <- c(301, 72, 73, 74, 75, 103)
 
