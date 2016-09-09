@@ -2,27 +2,25 @@ library(raster)
 library(dismo)
 library(gbm)
 
-load("Z:/COCA-conf/NEFSC trawl/trawl_data_for_models_AA_02102016.RData")
+fall.2015.prediction.stack <- stack("I:/jschuetz/Documents/SESYNC/GIS/fall.2015.prediction.stack.grd")
+spring.2015.prediction.stack <- stack("I:/jschuetz/Documents/SESYNC/GIS/spring.2015.prediction.stack.grd")
 
-##### add random and log biomass +1 columns
+load("I:/jschuetz/Documents/SESYNC/ForJS/trawl.model.dat.adj.02102016.Rdata")
+
+##### rename trawl data
+
+trawl.data <- trawl.dat.full.reduced2
+rm(trawl.dat.full.reduced2)
 
 trawl.data$RANDOM <- runif(nrow(trawl.data),0,1)
+
 trawl.data$BIOMASS[is.na(trawl.data$BIOMASS)] <- 0
 trawl.data$LOG.BIOMASS.1 <- log(trawl.data$BIOMASS + 1)
   
-
-##### identify species for generating models
-
 spp.sesync <- c(301,72,73,74,75,103)
-
-
-##### create empty prediction stacks to fill
 
 fall.out <- stack()
 spring.out <- stack()
-
-
-##### loop through species
 
 for (spp in 1:length(spp.sesync)){
   
@@ -55,25 +53,6 @@ for (spp in 1:length(spp.sesync)){
   
   save(model, file=paste("C:/Users/jschuetz/Documents/SESYNC_out/SVSPP_", spp.sesync[spp], "_FALL_SPRING_LOG_BIOMASS_GBM", sep=""))
 
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  fall_2015_predictors <- stack("Z:/COCA-conf/GIS/predictor stacks/fall_2015_predictors.grd")
-  spring_2015_predictors <- stack("Z:/COCA-conf/GIS/predictor stacks/spring_2015_predictors.grd")
-  
   fall.prediction <- raster::predict(fall.2015.prediction.stack,
                                    model,
                                    fun=predict,

@@ -15,7 +15,7 @@ my.files <- my.files[1:19]
 
 for (d in 1:length(my.files)){
   
-  vtr.data.1 <- read.csv(my.files[d])
+  vtr.data <- read.csv(my.files[d])
   ports.temp <- aggregate(VTR_YEAR ~ PORT_NAME + STATE + PORT_CODE, vtr.data, length)
   ports <- rbind(ports, ports.temp)
   
