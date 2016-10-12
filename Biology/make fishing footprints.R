@@ -1,335 +1,407 @@
-load("I:/jschuetz/Documents/SESYNC/R/SESYNC.RData")
 
-
-##### load libraries and spatial templates
+##### load libraries 
 
 library(raster)
 library(spatstat) 
 library(maptools)
 library(rgdal)
 library(rgeos)
+library(dplyr)
 
-sst <- raster("I:/jschuetz/Documents/SESYNC/GIS/sst.template.tif")
 
-filter <- readOGR(dsn = "I:/jschuetz/Documents/SESYNC/GIS", 
+sst <- raster("Z:/COCA-conf/GIS/sst.template.tif")
+
+sp.filter <- readOGR(dsn = "Z:/COCA-conf/GIS", 
                  layer = "filter_vtr_1km_coastline_buffer",
                  verbose = FALSE)
   
-ocean <- readOGR(dsn = "I:/jschuetz/Documents/SESYNC/GIS", 
+ocean <- readOGR(dsn = "Z:/COCA-conf/GIS", 
                  layer = "ocean",
                  verbose = FALSE)
 
+gear <- read.csv("Z:/COCA-conf/Output/Aggregated_Gear_Codes_from_BK.csv") 
 
-##### approach for filtering locations that are within 1km of Natural Earth ocean and assigning ID
+ports <- read.csv("Z:/COCA-conf/Output/ports sampled every year 1996-2015.csv")
 
-vtr.data$LAT_JGS <- vtr.data$CALC_LAT_DEG + vtr.data$CALC_LAT_MIN/60
-vtr.data$LON_JGS <- -1*(vtr.data$CALC_LON_DEG + vtr.data$CALC_LON_MIN/60)
+##### read in vtr data, trim to base period (2011-2014), generate dec deg locs, join with Brian Kennedy's gear codes,
+##### and summarise kept catch
 
-my.data <- vtr.data[vtr.data$SVSPP == 301 & vtr.data$STATE_CODE == 22,]
-port.locs <- port.locs[port.locs$STATE == "ME", ]
+vtr.data <- readRDS("Z:/COCA-conf/VTR and permit/VTR_data_from_focal_ports.rds") %>%
+  filter(VTR_YEAR > 2010, VTR_YEAR < 2015, !is.na(CALC_LAT_DEG), TRIP_CATG == 1) %>%
+  mutate(LAT_JGS = CALC_LAT_DEG + CALC_LAT_MIN/60, LON_JGS = -1*(CALC_LON_DEG + CALC_LON_MIN/60)) %>%
+  left_join(gear) %>%
+  group_by(SUB_TRIP_ID, LAT_JGS, LON_JGS, PORT_CODE, GEAR_KENNEDY, COST_ID) %>%
+  summarise(KEPT_GEAR = sum(KEPT, na.rm = TRUE))
 
 
-##### summarize kept catch 
 
-catch.locs.by.port <- aggregate(KEPT ~ SUB_TRIP_ID + LAT_JGS + LON_JGS + PORT_CODE + VTR_YEAR, my.data, sum)
-catch.locs.by.port <- catch.locs.by.port[catch.locs.by.port$LAT_JGS<90,] # latitudes greater than 90 create error
+##### make into spatial points df
 
-locations <- SpatialPointsDataFrame(coords=catch.locs.by.port[, c(3,2)], data=catch.locs.by.port[,c(1,4,5,6)])
+locations <- SpatialPointsDataFrame(coords=vtr.data[, c(3,2)], data=vtr.data[,c(1,4:7)])
 proj4string(locations) <- proj4string(sst)
-ids <- over(locations, filter)
+
+
+
+##### determine which cell each point falls within
+
+ids <- over(locations, sp.filter)
 ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
 locations@data$ID <- ids$ID # assign raster cell number to lat lons
-footprints.all <- aggregate(KEPT ~ ID + PORT_CODE, locations, sum)
 
 
-##### loop across ports and save kept catch results to a raster stack
+
+##### summarize kept catch within each cell
+
+footprints.abs <- filter(locations@data, !is.na(COST_ID)) %>%
+  group_by(ID, PORT_CODE, GEAR_KENNEDY, COST_ID) %>%
+  summarise(KEPT_IN_ID = sum(KEPT_GEAR, na.rm = TRUE)) 
+
+footprints.prop <- group_by(footprints.abs, PORT_CODE, GEAR_KENNEDY) %>%
+  summarise(KEPT_TOTAL = sum(KEPT_IN_ID, na.rm = TRUE)) %>%
+  right_join(footprints.abs) %>%
+  mutate(PROP_IN_ID = KEPT_IN_ID/KEPT_TOTAL)
+  
+
+
+##### loop across ports and gear types and save kept catch results to a raster stack
 
 kept.stack <- stack()
 
-for (y in 1:length(port.locs$PORT_CODE)){
+for (g in 1:7){
   
-  footprint <- footprints.all[footprints.all$PORT_CODE == port.locs$PORT_CODE[y],]
-  raster.kept <- sst
-  raster.kept[] <- 0
-  raster.kept[footprint$ID] <- footprint$KEPT
-  kept.stack <- stack(kept.stack, raster.kept)
+  for (y in 1:nrow(ports)){
+  
+    footprint <- footprints.abs[(footprints.abs$PORT_CODE == ports$PORT_CODE[y]) & footprints.abs$COST_ID == g,]
+    raster.kept <- sst
+    raster.kept[] <- 0
+    raster.kept[footprint$ID] <- footprint$KEPT_IN_ID
+    kept.stack <- stack(kept.stack, raster.kept)
+  
+  }
   
 }
 
-layer.names <- paste(port.locs$PORT_CODE, "_", port.locs$PORT_NAME, "_", port.locs$STATE, "_KEPT_CATCH", sep="")
+layer.names <- paste(rep(paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_KEPT_CATCH_COST_ID_", sep=""), 7), 
+                 paste(rep(1:7, each = nrow(ports), sep ="")), sep = "")
+
 names(kept.stack) <- layer.names
 
-writeRaster(kept.stack, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_KEPT_CATCH_BY_MAINE_PORT.grd", overwrite=T)
+writeRaster(kept.stack, "Z:/COCA-conf/GIS/footprints/KEPT_CATCH_BY_PORT_AND_GEAR_TYPE_2011-2014.grd", overwrite=T)
 
 
-##### aggregate trips in pixels
 
-catch.locs.by.port <- NULL
-catch.locs.by.port <- aggregate(KEPT ~ SUB_TRIP_ID + LAT_JGS + LON_JGS + PORT_CODE + VP_NUM + VTR_YEAR, my.data, sum)
-catch.locs.by.port <- catch.locs.by.port[catch.locs.by.port$LAT_JGS<90,] # latitudes greater than 90 create error
+##### loop across ports and gear types and save proportion kept catch in each ID results to a raster stack
 
-locations <- SpatialPointsDataFrame(coords=catch.locs.by.port[, c(3,2)], data=catch.locs.by.port[,c(1,4:7)])
-proj4string(locations) <- proj4string(sst)
-ids <- over(locations, filter)
-ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
-locations@data$ID <- ids$ID # assign raster cell number to lat lons
+prop.stack <- stack()
 
-vp.nums.all <- aggregate(SUB_TRIP_ID ~ ID + PORT_CODE + VP_NUM, locations, length) # sub trips by each vessel within pixel
-trips.all <- aggregate(SUB_TRIP_ID ~ ID + PORT_CODE, vp.nums.all, sum) # total sub trips within pixel
-
-
-##### loop across ports and save kept catch results to a raster stack
-
-trips.stack <- stack()
-
-for (y in 1:length(port.locs$PORT_CODE)){
+for (g in 1:7){
   
-  trips <- trips.all[trips.all$PORT_CODE == port.locs$PORT_CODE[y],]
-  raster.trips <- sst
-  raster.trips[] <- 0
-  raster.trips[trips$ID] <- trips$SUB_TRIP_ID
-  trips.stack <- stack(trips.stack, raster.trips)
+  for (y in 1:nrow(ports)){
+    
+    footprint <- footprints.prop[(footprints.prop$PORT_CODE == ports$PORT_CODE[y]) & footprints.prop$COST_ID == g,]
+    raster.prop <- sst
+    raster.prop[] <- 0
+    raster.prop[footprint$ID] <- footprint$PROP_IN_ID
+    prop.stack <- stack(prop.stack, raster.prop)
+    
+  }
   
 }
 
-layer.names <- paste(port.locs$PORT_CODE, "_", port.locs$PORT, "_", port.locs$STATE, "TOTAL_SUB_TRIPS", sep="")
-names(trips.stack) <- layer.names
+layer.names <- paste(rep(paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_PROPORTION_KEPT_CATCH_COST_ID_", sep=""), 7), 
+                     paste(rep(1:7, each = nrow(ports), sep ="")), sep = "")
 
-writeRaster(trips.stack, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_TOTAL_SUB_TRIPS_BY_MAINE_PORT.grd", overwrite=T)
+names(prop.stack) <- layer.names
 
-
-##### calculate lbs of kept catch per trip in each pixel
-
-kept.per.trip<-kept.stack/trips.stack
-writeRaster(kept.per.trip, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_CATCH_PER_TRIP_MAINE_PORTS.grd")
+writeRaster(prop.stack, "Z:/COCA-conf/GIS/footprints/PROPORTION_KEPT_CATCH_BY_PORT_AND_GEAR_TYPE_2011-2014.grd", overwrite=T)
 
 
-##### make plots
 
-my.palette <- colorRampPalette(c("gray95","brown"))(n=100)     # Create color palette with 100 colors
-plot(fall.2015.biomass[[1]], col=my.palette)
-plot(ocean, add=T, border="gray50")
+##### example of how to pull data for particular port
+
+i <- grep("PORTLAND_ME", names(prop.stack))
+portland <- prop.stack[[i]]
+plot(portland[[6]])
+plot(ocean, add=T)
+portland[portland == 0] <- NA
 
 
-##### which cells contain maine ports?
 
-locations <- SpatialPointsDataFrame(coords=port.locs[, c(5,6)], data=port.locs[,c(1:4)])
+
+################################################
+################################################
+
+###### shelf wide summaries by gear type
+
+vtr.data.shelf <- readRDS("Z:/COCA-conf/VTR and permit/VTR_data_from_focal_ports.rds") %>%
+  filter(VTR_YEAR > 2010, VTR_YEAR < 2015, !is.na(CALC_LAT_DEG), TRIP_CATG == 1) %>%
+  mutate(LAT_JGS = CALC_LAT_DEG + CALC_LAT_MIN/60, LON_JGS = -1*(CALC_LON_DEG + CALC_LON_MIN/60)) %>%
+  left_join(gear) %>%
+  group_by(SUB_TRIP_ID, LAT_JGS, LON_JGS, GEAR_KENNEDY, COST_ID) %>%
+  summarise(KEPT_GEAR = sum(KEPT, na.rm = TRUE))
+
+
+
+##### make into spatial points df
+
+locations <- SpatialPointsDataFrame(coords=vtr.data.shelf[, c(3,2)], data=vtr.data.shelf[,c(1,4:6)])
 proj4string(locations) <- proj4string(sst)
-ids <- over(locations, filter)
+
+
+
+##### determine which cell each point falls within
+
+ids <- over(locations, sp.filter)
 ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
 locations@data$ID <- ids$ID # assign raster cell number to lat lons
 
-cells <- aggregate(PORT_NAME ~ ID, locations, length) # sub trips by each vessel within pixel
-
-port.cells <- sst
-port.cells[] <- NA
-port.cells[cells$ID] <- cells$PORT_NAME
 
 
-##### calculate distance to cells containing maine ports
+##### summarize kept catch within each cell
 
-d <- as.vector(raster::distance(port.cells))
+footprints.abs <- filter(locations@data, !is.na(COST_ID)) %>%
+  group_by(ID, GEAR_KENNEDY, COST_ID) %>%
+  summarise(KEPT_IN_ID = sum(KEPT_GEAR, na.rm = TRUE)) 
 
-##### generate regression model to predict catch per trip using distance to port and predicted lobster biomass
-
-y <- as.vector(kept.per.trip)
-y[is.nan(y)] <- NA
-
-bio <- raster("I:/jschuetz/Documents/SESYNC/Output/predictions/spring.2015_PREDICTIONS_FROM_ANNUAL_LOG_BIOMASS_GBM.grd")
-l <- as.vector(bio[[1]])
-
-my.data <- data.frame(y,d,l)
-
-library(mgcv)
-mod <- gam(y ~ d + l, family="gaussian", na.action=na.omit)
-
-
-##### predict CPUE using d and future lobster forecast...this ends up being a sucky way to predict CPUE
-
-bio <- raster("I:/jschuetz/Documents/SESYNC/Output/predictions/spring.1C_PREDICTIONS_FROM_ANNUAL_LOG_BIOMASS_GBM.grd")
-l <- bio[[1]]
-d <- distance(port.cells)
-
-vs <- stack(l,d)
-names(vs) <- c("l", "d")
-
-ps <- predict(vs, mod, na.rm=T)
-
-foot <- kept.per.trip*0
-out<-ps+foot
-
-=======
-load("I:/jschuetz/Documents/SESYNC/R/SESYNC.RData")
-
-
-##### load libraries and spatial templates
-
-library(raster)
-library(spatstat) 
-library(maptools)
-library(rgdal)
-library(rgeos)
-
-sst <- raster("I:/jschuetz/Documents/SESYNC/GIS/sst.template.tif")
-
-filter <- readOGR(dsn = "I:/jschuetz/Documents/SESYNC/GIS", 
-                 layer = "filter_vtr_1km_coastline_buffer",
-                 verbose = FALSE)
-  
-ocean <- readOGR(dsn = "I:/jschuetz/Documents/SESYNC/GIS", 
-                 layer = "ocean",
-                 verbose = FALSE)
+footprints.prop <- group_by(footprints.abs, GEAR_KENNEDY) %>%
+  summarise(KEPT_TOTAL = sum(KEPT_IN_ID, na.rm = TRUE)) %>%
+  right_join(footprints.abs) %>%
+  mutate(PROP_IN_ID = KEPT_IN_ID/KEPT_TOTAL)
 
 
 
-##### approach for filtering locations that are within 1km of Natural Earth ocean and assigning ID
-
-vtr.data$LAT_JGS <- vtr.data$CALC_LAT_DEG + vtr.data$CALC_LAT_MIN/60
-vtr.data$LON_JGS <- -1*(vtr.data$CALC_LON_DEG + vtr.data$CALC_LON_MIN/60)
-
-my.data <- vtr.data[vtr.data$SVSPP == 301 & vtr.data$STATE_CODE == 22,]
-port.locs <- port.locs[port.locs$STATE == "ME", ]
-
-
-
-##### summarize kept catch 
-
-catch.locs.by.port <- aggregate(KEPT ~ SUB_TRIP_ID + LAT_JGS + LON_JGS + PORT_CODE + VTR_YEAR, my.data, sum)
-catch.locs.by.port <- catch.locs.by.port[catch.locs.by.port$LAT_JGS<90,] # latitudes greater than 90 create error
-
-locations <- SpatialPointsDataFrame(coords=catch.locs.by.port[, c(3,2)], data=catch.locs.by.port[,c(1,4,5,6)])
-proj4string(locations) <- proj4string(sst)
-ids <- over(locations, filter)
-ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
-locations@data$ID <- ids$ID # assign raster cell number to lat lons
-footprints.all <- aggregate(KEPT ~ ID + PORT_CODE, locations, sum)
-
-
-
-
-##### loop across ports and save kept catch results to a raster stack
+##### loop across ports and gear types and save kept catch results to a raster stack
 
 kept.stack <- stack()
 
-for (y in 1:length(port.locs$PORT_CODE)){
+for (g in 1:7){
   
-  footprint <- footprints.all[footprints.all$PORT_CODE == port.locs$PORT_CODE[y],]
-  raster.kept <- sst
-  raster.kept[] <- 0
-  raster.kept[footprint$ID] <- footprint$KEPT
-  kept.stack <- stack(kept.stack, raster.kept)
+    footprint <- footprints.abs[footprints.abs$COST_ID == g,]
+    raster.kept <- sst
+    raster.kept[] <- 0
+    raster.kept[footprint$ID] <- footprint$KEPT_IN_ID
+    kept.stack <- stack(kept.stack, raster.kept)
   
 }
 
-layer.names <- paste(port.locs$PORT_CODE, "_", port.locs$PORT_NAME, "_", port.locs$STATE, "_KEPT_CATCH", sep="")
+layer.names <- paste(rep(paste("SHELFWIDE_KEPT_CATCH_COST_ID_", sep=""), 7), seq(1, 7), sep="")
+
 names(kept.stack) <- layer.names
 
-writeRaster(kept.stack, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_KEPT_CATCH_BY_MAINE_PORT.grd", overwrite=T)
+writeRaster(kept.stack, "Z:/COCA-conf/GIS/footprints/KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2014.grd", overwrite=T)
 
 
+
+##### loop across ports and gear types and save proportion kept catch in each ID results to a raster stack
+
+prop.stack <- stack()
+
+for (g in 1:7){
+  
+    footprint <- footprints.prop[footprints.prop$COST_ID == g,]
+    raster.prop <- sst
+    raster.prop[] <- 0
+    raster.prop[footprint$ID] <- footprint$PROP_IN_ID
+    prop.stack <- stack(prop.stack, raster.prop)
+  
+}
+
+layer.names <- paste(rep(paste("SHELFWIDE_PROPORTION_KEPT_CATCH_COST_ID_", sep=""), 7), seq(1, 7), sep="")
+
+names(prop.stack) <- layer.names
+
+writeRaster(prop.stack, "Z:/COCA-conf/GIS/footprints/PROPORTION_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2014.grd", overwrite=T)
 
 
 #####
 
-catch.locs.by.port <- NULL
-catch.locs.by.port <- aggregate(KEPT ~ SUB_TRIP_ID + LAT_JGS + LON_JGS + PORT_CODE + VP_NUM + VTR_YEAR, my.data, sum)
-catch.locs.by.port <- catch.locs.by.port[catch.locs.by.port$LAT_JGS<90,] # latitudes greater than 90 create error
 
-locations <- SpatialPointsDataFrame(coords=catch.locs.by.port[, c(3,2)], data=catch.locs.by.port[,c(1,4:7)])
+
+############################################################################
+############################################################################
+
+
+
+##### make layers that are safe for visuals (at least 3 VP_NUMs represented in each cell)
+
+
+##### read in vtr data, trim to base period (2011-2014), generate dec deg locs, join with Brian Kennedy's gear codes,
+##### and summarise kept catch
+
+vtr.data <- readRDS("Z:/COCA-conf/VTR and permit/VTR_data_from_focal_ports.rds") %>%
+  filter(VTR_YEAR > 2010, VTR_YEAR < 2015, !is.na(CALC_LAT_DEG), TRIP_CATG == 1) %>%
+  mutate(LAT_JGS = CALC_LAT_DEG + CALC_LAT_MIN/60, LON_JGS = -1*(CALC_LON_DEG + CALC_LON_MIN/60)) %>%
+  left_join(gear) %>%
+  group_by(VP_NUM, LAT_JGS, LON_JGS, PORT_CODE, GEAR_KENNEDY, COST_ID) %>%
+  summarise(KEPT_GEAR = sum(KEPT, na.rm = TRUE))
+
+
+
+##### make into spatial points df
+
+locations <- SpatialPointsDataFrame(coords=vtr.data[, c(3,2)], data=vtr.data[,c(1,4:7)])
 proj4string(locations) <- proj4string(sst)
-ids <- over(locations, filter)
+
+
+
+##### determine which cell each point falls within
+
+ids <- over(locations, sp.filter)
 ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
 locations@data$ID <- ids$ID # assign raster cell number to lat lons
 
-vp.nums.all <- aggregate(SUB_TRIP_ID ~ ID + PORT_CODE + VP_NUM, locations, length) # sub trips by each vessel within pixel
-trips.all <- aggregate(SUB_TRIP_ID ~ ID + PORT_CODE, vp.nums.all, sum) # total sub trips within pixel
+
+
+##### summarize kept catch within each cell
+
+footprints.abs <- filter(locations@data, !is.na(COST_ID)) %>%
+  group_by(ID, PORT_CODE, GEAR_KENNEDY, COST_ID) %>%
+  summarise(N_VESSELS = n(), KEPT_IN_ID = sum(KEPT_GEAR, na.rm = TRUE)) 
+
+footprints.prop <- group_by(footprints.abs, PORT_CODE, GEAR_KENNEDY, COST_ID) %>%
+  summarise(KEPT_TOTAL = sum(KEPT_IN_ID, na.rm = TRUE)) %>%
+  right_join(footprints.abs) %>%
+  mutate(PROP_IN_ID = KEPT_IN_ID/KEPT_TOTAL)
 
 
 
+##### loop across ports and gear types and save kept catch results to a raster stack
 
+kept.stack <- stack()
 
-trips.stack <- stack()
-
-for (y in 1:length(port.locs$PORT_CODE)){
+for (g in 1:7){
   
-  trips <- trips.all[trips.all$PORT_CODE == port.locs$PORT_CODE[y],]
-  raster.trips <- sst
-  raster.trips[] <- 0
-  raster.trips[trips$ID] <- trips$SUB_TRIP_ID
-  trips.stack <- stack(trips.stack, raster.trips)
+  for (y in 1:nrow(ports)){
+    
+    footprint <- filter(footprints.abs, PORT_CODE == ports$PORT_CODE[y], COST_ID == g, N_VESSELS > 2)
+    raster.kept <- sst
+    raster.kept[] <- 0
+    raster.kept[footprint$ID] <- footprint$KEPT_IN_ID
+    kept.stack <- stack(kept.stack, raster.kept)
+    
+  }
   
 }
 
-layer.names <- paste(port.locs$PORT_CODE, "_", port.locs$PORT, "_", port.locs$STATE, "TOTAL_SUB_TRIPS", sep="")
-names(trips.stack) <- layer.names
+layer.names <- paste(rep(paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_NOAA_PUBLIC_SAFE_KEPT_CATCH_COST_ID_", sep=""), 7), 
+                     paste(rep(1:7, each = nrow(ports), sep ="")), sep = "")
 
-writeRaster(trips.stack, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_TOTAL_SUB_TRIPS_BY_MAINE_PORT.grd", overwrite=T)
+names(kept.stack) <- layer.names
 
-
-
-##### calculate lbs of kept catch per trip in each pixel
-
-kept.per.trip<-kept.stack/trips.stack
-
-writeRaster(kept.per.trip, "I:/jschuetz/Documents/SESYNC/Output/SVSPP_301_CATCH_PER_TRIP_MAINE_PORTS.grd")
-
-
-##### make plots
-
-my.palette <- colorRampPalette(c("gray95","brown"))(n=100)     # Create color palette with 100 colors
-plot(fall.2015.biomass[[1]], col=my.palette)
-plot(ocean, add=T, border="gray50")
+writeRaster(kept.stack, "Z:/COCA-conf/GIS/footprints/NOAA_PUBLIC_SAFE_KEPT_CATCH_BY_PORT_AND_GEAR_TYPE_2011-2014.grd", overwrite=T)
 
 
 
+##### loop across ports and gear types and save proportion kept catch in each ID results to a raster stack
 
-##### which cells contain maine ports?
+prop.stack <- stack()
+
+for (g in 1:7){
+  
+  for (y in 1:nrow(ports)){
+    
+    footprint <- filter(footprints.prop, PORT_CODE == ports$PORT_CODE[y], COST_ID == g, N_VESSELS > 2)
+    raster.prop <- sst
+    raster.prop[] <- 0
+    raster.prop[footprint$ID] <- footprint$PROP_IN_ID
+    prop.stack <- stack(prop.stack, raster.prop)
+    
+  }
+  
+}
+
+layer.names <- paste(rep(paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_NOAA_PUBLIC_SAFE_PROPORTION_KEPT_CATCH_COST_ID_", sep=""), 7), 
+                     paste(rep(1:7, each = nrow(ports), sep ="")), sep = "")
+
+names(prop.stack) <- layer.names
+
+writeRaster(prop.stack, "Z:/COCA-conf/GIS/footprints/NOAA_PUBLIC_SAFE_PROPORTION_KEPT_CATCH_BY_PORT_AND_GEAR_TYPE_2011-2014.grd", overwrite=T)
 
 
-locations <- SpatialPointsDataFrame(coords=port.locs[, c(5,6)], data=port.locs[,c(1:4)])
+
+################################################
+################################################
+
+###### shelf wide summaries by gear type trimmed to cells with 3 or more vessels
+
+vtr.data.recs <- readRDS("Z:/COCA-conf/VTR and permit/VTR_data_from_focal_ports.rds") %>%
+  filter(VTR_YEAR > 2010, VTR_YEAR < 2015, !is.na(CALC_LAT_DEG), TRIP_CATG == 1) %>%
+  mutate(LAT_JGS = CALC_LAT_DEG + CALC_LAT_MIN/60, LON_JGS = -1*(CALC_LON_DEG + CALC_LON_MIN/60)) %>%
+  left_join(gear) %>%
+  group_by(VP_NUM, LAT_JGS, LON_JGS, GEAR_KENNEDY, COST_ID) %>%
+  summarise(KEPT_GEAR = sum(KEPT, na.rm = TRUE))
+
+
+
+##### make into spatial points df
+
+locations <- SpatialPointsDataFrame(coords=vtr.data.recs[, c(3,2)], data=vtr.data.recs[,c(1,4:6)])
 proj4string(locations) <- proj4string(sst)
-ids <- over(locations, filter)
+
+
+
+##### determine which cell each point falls within
+
+ids <- over(locations, sp.filter)
 ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
 locations@data$ID <- ids$ID # assign raster cell number to lat lons
 
-cells <- aggregate(PORT_NAME ~ ID, locations, length) # sub trips by each vessel within pixel
-
-port.cells <- sst
-port.cells[] <- NA
-port.cells[cells$ID] <- cells$PORT_NAME
 
 
-##### calculate distance to cells containing maine ports
+##### summarize kept catch within each cell
 
-d <- as.vector(raster::distance(port.cells))
+footprints.abs <- filter(locations@data, !is.na(COST_ID)) %>%
+  group_by(ID, GEAR_KENNEDY, COST_ID) %>%
+  summarise(N_VESSELS = n(), KEPT_IN_ID = sum(KEPT_GEAR, na.rm = TRUE)) 
 
-##### generate regression model to predict catch per trip using distance to port and predicted lobster biomass
-
-y <- as.vector(kept.per.trip)
-y[is.nan(y)] <- NA
-
-bio <- raster("I:/jschuetz/Documents/SESYNC/Output/predictions/spring.2015_PREDICTIONS_FROM_ANNUAL_LOG_BIOMASS_GBM.grd")
-l <- as.vector(bio[[1]])
-
-my.data <- data.frame(y,d,l)
-
-library(mgcv)
-mod <- gam(y ~ d + l, family="gaussian", na.action=na.omit)
+footprints.prop <- group_by(footprints.abs, GEAR_KENNEDY, COST_ID) %>%
+  summarise(KEPT_TOTAL = sum(KEPT_IN_ID, na.rm = TRUE)) %>%
+  right_join(footprints.abs) %>%
+  mutate(PROP_IN_ID = KEPT_IN_ID/KEPT_TOTAL)
 
 
-##### predict CPUE using d and future lobster forecast...this ends up being a sucky way to predict CPUE
 
-bio <- raster("I:/jschuetz/Documents/SESYNC/Output/predictions/spring.1C_PREDICTIONS_FROM_ANNUAL_LOG_BIOMASS_GBM.grd")
-l <- bio[[1]]
-d <- distance(port.cells)
+##### trim data set to cells that have at least 3 vessels
+##### loop across ports and gear types and save kept catch results to a raster stack
 
-vs <- stack(l,d)
-names(vs) <- c("l", "d")
+kept.stack <- stack()
 
-ps <- predict(vs, mod, na.rm=T)
+for (g in 1:7){
+  
+  footprint <- filter(footprints.abs, COST_ID == g, N_VESSELS > 2)
+  raster.kept <- sst
+  raster.kept[] <- 0
+  raster.kept[footprint$ID] <- footprint$KEPT_IN_ID
+  kept.stack <- stack(kept.stack, raster.kept)
+  
+}
 
-foot <- kept.per.trip*0
-out<-ps+foot
+layer.names <- paste(rep(paste("NOAA_PUBLIC_SAFE_SHELFWIDE_KEPT_CATCH_COST_ID_", sep=""), 7), seq(1, 7), sep="")
 
->>>>>>> a1c716e04e48486c1a61175bccf99e223cac9f91
-cellStats(out,sum)
+names(kept.stack) <- layer.names
+
+writeRaster(kept.stack, "Z:/COCA-conf/GIS/footprints/NOAA_PUBLIC_SAFE_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2014.grd", overwrite=T)
+
+
+
+##### loop across ports and gear types and save proportion kept catch in each ID results to a raster stack
+
+prop.stack <- stack()
+
+for (g in 1:7){
+  
+  footprint <- filter(footprints.prop, COST_ID == g, N_VESSELS > 2)
+  raster.prop <- sst
+  raster.prop[] <- 0
+  raster.prop[footprint$ID] <- footprint$PROP_IN_ID
+  prop.stack <- stack(prop.stack, raster.prop)
+  
+}
+
+layer.names <- paste(rep(paste("NOAA_PUBLIC_SAFE_SHELFWIDE_PROPORTION_KEPT_CATCH_COST_ID_", sep=""), 7), seq(1, 7), sep="")
+
+names(prop.stack) <- layer.names
+
+writeRaster(prop.stack, "Z:/COCA-conf/GIS/footprints/NOAA_PUBLIC_SAFE_PROPORTION_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2014.grd", overwrite=T)
+
+
