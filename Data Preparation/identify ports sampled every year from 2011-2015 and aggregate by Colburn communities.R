@@ -13,7 +13,6 @@ my.ports <- tbl_df(read.csv("Z:/COCA-conf/Landings/Mills_1982-2015 GAR Landings 
   filter(N.YEARS == 5)
 
 
-
 ##### landed lbs and value for ports sampled every year 2011-2015
 
 my.lbs.value <- tbl_df(read.csv("Z:/COCA-conf/Landings/Mills_1982-2015 GAR Landings combined sheets.csv")) %>%
