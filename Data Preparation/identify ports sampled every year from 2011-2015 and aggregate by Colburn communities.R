@@ -19,11 +19,17 @@ my.lbs.value <- tbl_df(read.csv("Z:/COCA-conf/Landings/Mills_1982-2015 GAR Landi
   filter(YEAR > 2010, YEAR < 2016) %>%
   semi_join(my.ports) %>%
   group_by(STATE, PORT, PORT_CODE) %>%
-  summarise(LANDED_LBS_2011_2015 = sum(LANDED_LBS, na.rm=T), VALUE_2011_2015 = sum(VALUE, na.rm=T))
+  summarise(SUM_LANDED_LBS_2011_2015 = sum(LANDED_LBS, na.rm=T), 
+            SUM_VALUE_2011_2015 = sum(VALUE, na.rm=T)) %>%
+  mutate(MEAN_LANDED_LBS_2011_2015 = SUM_LANDED_LBS_2011_2015/5,
+         MEAN_VALUE_2011_2015 = SUM_VALUE_2011_2015/5)
   
 write.csv(my.lbs.value, "Z:/COCA-conf/Output/ports sampled every year 2011-2015 with landed lbs and value aggregated.csv", row.names=F)
 
+final.ports <- filter(my.lbs.value, MEAN_VALUE_2011_2015 > 1000000,  "OTHER")
 
+# footprints gear type x port and just port and shelfwide
+# link commit id to output
 
 ##### read in colburn commiunities and join
 
