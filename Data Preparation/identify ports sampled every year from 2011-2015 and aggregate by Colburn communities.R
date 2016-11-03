@@ -31,7 +31,7 @@ final.ports <- filter(my.lbs.value, MEAN_VALUE_2011_2015 > 1000000,  "OTHER")
 # footprints gear type x port and just port and shelfwide
 # link commit id to output
 
-##### read in colburn commiunities and join
+##### read in colburn communities and join
 
 colburn <- tbl_df(read.csv("Z:/COCA-conf/Landings/Ports Aggregated.csv"))
 names(colburn)[1:2] <- c("PORT", "STATE")
