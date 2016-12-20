@@ -26,10 +26,9 @@ my.lbs.value <- tbl_df(read.csv("Z:/COCA-conf/Landings/Mills_1982-2015 GAR Landi
   
 write.csv(my.lbs.value, "Z:/COCA-conf/Output/ports sampled every year 2011-2015 with landed lbs and value aggregated.csv", row.names=F)
 
-final.ports <- filter(my.lbs.value, MEAN_VALUE_2011_2015 > 1000000,  "OTHER")
+final.ports <- filter(my.lbs.value, MEAN_VALUE_2011_2015 > 1000000, !str_detect(PORT, "OTHER")) 
 
 # footprints gear type x port and just port and shelfwide
-# link commit id to output
 
 ##### read in colburn communities and join
 
