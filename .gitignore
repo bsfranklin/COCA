@@ -7,5 +7,5 @@
 *.xls
 *.xlsx
 
-
+.Rhistory
 .Rproj.user
