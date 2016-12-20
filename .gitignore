@@ -6,6 +6,5 @@
 *.gdx
 *.xls
 *.xlsx
-
 .Rhistory
 .Rproj.user
