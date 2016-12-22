@@ -4,6 +4,7 @@ library(tidyverse)
 library(stringr)
 
 
+
 ##### identify ports sampled every year 2011-2015
 
 my.ports <- tbl_df(read.csv("Z:/COCA-conf/Landings/Mills_1982-2015 GAR Landings combined sheets.csv")) %>%
@@ -11,6 +12,7 @@ my.ports <- tbl_df(read.csv("Z:/COCA-conf/Landings/Mills_1982-2015 GAR Landings 
   group_by(STATE, PORT, PORT_CODE) %>%
   summarise(N.YEARS = n()) %>%
   filter(N.YEARS == 5)
+
 
 
 ##### landed lbs and value for ports sampled every year 2011-2015
@@ -26,24 +28,24 @@ my.lbs.value <- tbl_df(read.csv("Z:/COCA-conf/Landings/Mills_1982-2015 GAR Landi
   
 write.csv(my.lbs.value, "Z:/COCA-conf/Output/ports sampled every year 2011-2015 with landed lbs and value aggregated.csv", row.names=F)
 
-final.ports <- filter(my.lbs.value, MEAN_VALUE_2011_2015 > 1000000, !str_detect(PORT, "OTHER")) 
 
-# footprints gear type x port and just port and shelfwide
 
-##### read in colburn communities and join
+##### aggregate values based on colburn communities when those are different from ports
 
-colburn <- tbl_df(read.csv("Z:/COCA-conf/Landings/Ports Aggregated.csv"))
+colburn <- read_csv("Z:/COCA-conf/Landings/Ports Aggregated.csv")
 names(colburn)[1:2] <- c("PORT", "STATE")
-my.ports <- left_join(my.ports, colburn)
-misses <- anti_join(colburn, my.ports)
 
+my.lbs.value.c <- left_join(my.lbs.value, colburn) %>%
+  mutate(JGS.COMMUNITY = GEO_NAME_ACS2014)
+  
+i <- is.na(my.lbs.value.c$JGS.COMMUNITY)
 
+my.lbs.value.c[i, "JGS.COMMUNITY"] <- str_c(my.lbs.value.c$PORT[i], ", ", my.lbs.value.c$STATE[i])
 
-##### look at how many colburn ports are not listed in full landings data set
+final.communities <- group_by(my.lbs.value.c, JGS.COMMUNITY) %>%
+  mutate(MEAN_LANDED_LBS_2011_2015_COMMUNITY = sum(MEAN_LANDED_LBS_2011_2015), 
+            MEAN_VALUE_2011_2015_COMMUNITY = sum(MEAN_VALUE_2011_2015)) %>%
+  filter(MEAN_VALUE_2011_2015_COMMUNITY > 1000000, !str_detect(JGS.COMMUNITY, "OTHER"))
 
-all.ports <- tbl_df(read.csv("Z:/COCA-conf/Landings/Mills_1982-2015 GAR Landings combined sheets.csv")) %>%
-  filter(duplicated(str_c(YEAR, STATE, PORT, PORT_CODE)) == FALSE) %>%
-  group_by(STATE, PORT, PORT_CODE) %>%
-  summarise(N.YEARS = n())
+write.csv(final.communities, "Z:/COCA-conf/Output/communities and ports meeting selection criteria.csv", row.names=F)
 
-all.misses <- anti_join(colburn, all.ports)
