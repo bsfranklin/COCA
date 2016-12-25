@@ -91,7 +91,7 @@ MakeCommunityGearFootprints <- function(df) {
   raster.kept <- sst
   raster.kept[] <- NA
   raster.kept[footprint$ID] <- footprint$KEPT
-  
+
   total.kept <- sum(footprint$KEPT)
   footprint$PROPORTION_OF_TOTAL <- footprint$KEPT/total.kept
   
@@ -117,20 +117,24 @@ MakeNOAASafeCommunityGearFootprints <- function(df, list.column) {
   footprint.safe <- group_by(df, ID) %>%
     summarize(N.VESSELS = n_distinct(VP_NUM, na.rm = TRUE)) %>%
     drop_na() %>%
-    filter(N_VP_NUMS_IN_PIXEL > 2) %>%
+    filter(N.VESSELS > 2) %>%
     mutate(MEETS_CONFIDENTIALITY = 1)
   
-  raster.kept.safe <- list.column[[2]] * footprint.safe
-  raster.proportion.safe <- list.column[[2]] * footprint.safe
+  safe <- sst
+  safe[] <- NA
+  safe[footprint.safe$ID] <- footprint.safe$MEETS_CONFIDENTIALITY
   
-  list(footprint.safe, raster.kept.safe, raster.proportion.safe)
-  
+  safe.raster.kept <- safe * list.column[[2]] 
+  safe.raster.proportion <- safe * list.column[[3]] 
+
+  list(footprint.safe, safe.raster.kept, safe.raster.proportion)
+       
 }
 
 vtr.data <- vtr.data %>%
   mutate(JGS.NOAA.SAFE.COMMUNITY.GEAR.FOOTPRINTS = purrr::map2(vtr.data$data, 
-                                                               vtr.data$JGS.COMMUNITY.GEAR.FOOTPRINTS,
-                                                               possibly(MakeCommunityGearFootprints, NA)))
+                                                                vtr.data$JGS.COMMUNITY.GEAR.FOOTPRINTS, 
+                                                                possibly(MakeNOAASafeCommunityGearFootprints, NA)))
 
 ```
 
