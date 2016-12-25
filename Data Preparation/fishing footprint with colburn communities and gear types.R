@@ -62,7 +62,6 @@ locations@data <- left_join(locations@data, gear.types)
 footprints.all <- aggregate(KEPT ~ ID + PORT_CODE + COST_ID, locations, sum)
 
 
-
 ##### loop across ports and gear types and save kept catch results to a raster stack
 
 kept.stack <- stack()
@@ -83,12 +82,8 @@ for (y in 1:length(ports$PORT_CODE)){
 }
 
 layer.names <- paste(rep(str_c(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
-
 names(kept.stack) <- layer.names
-
 writeRaster(kept.stack, "Z:/COCA-conf/GIS/footprints/KEPT_CATCH_BY_PORT_AND_GEAR_TYPE_2011-2015.grd", overwrite=T)
-
-
 
 
 
@@ -116,10 +111,8 @@ for (y in 1:length(ports$PORT_CODE)){
 }
 
 layer.names <- paste(rep(str_c(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
-
 names(proportion.stack) <- layer.names
-
-writeRaster(proportion.stack, "Z:/COCA-conf/GIS/footprints/KEPT_CATCH_PROPORTION_BY_PORT_AND_GEAR_TYPE_2011-2015.grd", overwrite=T)
+writeRaster(proportion.stack, "Z:/COCA-conf/GIS/footprints/PROPORTION_KEPT_CATCH_BY_PORT_AND_GEAR_TYPE_2011-2015.grd", overwrite=T)
 
 
 
@@ -136,11 +129,8 @@ for (g in 1:7){
 }
 
 layer.names <- paste(rep(str_c("SHELFWIDE_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
-
 names(shelf.kept) <- layer.names
-
 writeRaster(shelf.kept, "Z:/COCA-conf/GIS/footprints/KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
-
 
 
 
@@ -159,17 +149,15 @@ for (g in 1:7){
 }
 
 layer.names <- paste(rep(str_c("SHELFWIDE_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
-
 names(shelf.prop) <- layer.names
-
-writeRaster(shelf.prop, "Z:/COCA-conf/GIS/footprints/KEPT_CATCH_PROPORTION_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
-
+writeRaster(shelf.prop, "Z:/COCA-conf/GIS/footprints/PROPORTION_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
 
 
 
 
 
-##### summarize # unique vessels per pixel VP_HULL for each port and gear type
+
+##### make footprints that meet 3 unique vessel ID requirement for port and gear type
 
 
 catch.locs.by.port <- NULL
@@ -198,30 +186,91 @@ ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster te
 locations@data$ID <- ids$ID # assign raster cell number to lat lons
 locations@data <- left_join(locations@data, gear.types)
 
-vp.nums.all <- group_by(locations@data, COST_ID + ID + PORT_CODE) %>%
-  summarize(N_VP_NUMS_IN_PIXEL = n_distinct(VP_NUM))
-
-#####
+vp.nums.all <- group_by(locations@data, COST_ID, ID, PORT_CODE) %>%
+  summarize(N_VP_NUMS_IN_PIXEL = n_distinct(VP_NUM)) %>%
+  filter(N_VP_NUMS_IN_PIXEL > 2) %>%
+  mutate(MEETS_CONFIDENTIALITY = 1)
 
 vp.num.stack <- stack()
 
 for (y in 1:length(ports$PORT_CODE)){
   
-  vp.nums <- uniq.vp.nums[uniq.vp.nums$PORT_CODE == ports$PORT_CODE[y],]
-  raster.vp.nums <- sst
-  raster.vp.nums[] <- NA
-  raster.vp.nums[vp.nums$ID] <- vp.nums$VP_NUM
-  vp.num.stack <- stack(vp.num.stack, raster.vp.nums)
+  for (g in 1:7){
+    
+    vp.nums <- filter(vp.nums.all, PORT_CODE == ports$PORT_CODE[y], COST_ID == g)
+    raster.vp.nums <- sst
+    raster.vp.nums[] <- NA
+    raster.vp.nums[vp.nums$ID] <- vp.nums$MEETS_CONFIDENTIALITY
+    vp.num.stack <- stack(vp.num.stack, raster.vp.nums)
+  
+  }
   
 }
 
-layer.names <- paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_UNIQUE_VESSELS", sep="")
-names(vp.num.stack) <- layer.names
+kept.catch.safe <- stack(vp.num.stack * kept.stack)
+layer.names <- paste(rep(str_c("NOAA_SAFE_", ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
+names(kept.catch.safe) <- layer.names
+writeRaster(kept.catch.safe, "Z:/COCA-conf/GIS/footprints/NOAA_SAFE_KEPT_CATCH_BY_PORT_AND_GEAR_TYPE_2011-2015.grd", overwrite=T)
 
-writeRaster(vp.num.stack, "Z:/COCA-conf/GIS/UNIQUE_VESSELS_BY_PORT.grd", overwrite=T)
+proportion.catch.safe <- stack(vp.num.stack * proportion.stack)
+layer.names <- paste(rep(str_c("NOAA_SAFE_", ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
+names(proportion.catch.safe) <- layer.names
+writeRaster(proportion.catch.safe, "Z:/COCA-conf/GIS/footprints/NOAA_SAFE_PROPORTION_KEPT_CATCH_BY_PORT_AND_GEAR_TYPE_2011-2015.grd", overwrite=T)
 
 
-#####
+
+
+##### make footprints that meet 3 unique vessel ID requirement shelfwide by gear type
+
+vp.nums.shelf <- group_by(locations@data, COST_ID, ID) %>%
+  summarize(N_VP_NUMS_IN_PIXEL = n_distinct(VP_NUM)) %>%
+  filter(N_VP_NUMS_IN_PIXEL > 2) %>%
+  mutate(MEETS_CONFIDENTIALITY = 1)
+
+vp.num.shelf.stack <- stack()
+
+for (g in 1:7){
+    
+    vp.nums <- filter(vp.nums.shelf, COST_ID == g)
+    raster.vp.nums <- sst
+    raster.vp.nums[] <- NA
+    raster.vp.nums[vp.nums$ID] <- vp.nums$MEETS_CONFIDENTIALITY
+    vp.num.shelf.stack <- stack(vp.num.shelf.stack, raster.vp.nums)
+  
+}
+
+kept.shelf.safe <- stack(vp.num.shelf.stack * shelf.kept)
+layer.names <- paste(rep(str_c("NOAA_SAFE_SHELFWIDE_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
+names(kept.shelf.safe) <- layer.names
+writeRaster(kept.shelf.safe, "Z:/COCA-conf/GIS/footprints/NOAA_SAFE_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
+
+proportion.shelf.safe <- stack(vp.num.shelf.stack * shelf.prop)
+layer.names <- paste(rep(str_c("NOAA_SAFE_SHELFWIDE_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
+names(proportion.shelf.safe) <- layer.names
+writeRaster(proportion.shelf.safe, "Z:/COCA-conf/GIS/footprints/NOAA_SAFE_PROPORTION_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################################################################################################
+
+##### EVERYTHING BELOW HERE IS JUNK...BUT IT MIGHT GET YOU STARTED ON SOME OTHER INTERESTING THINGS
+
+###################################################################################################
+
 
 trips.stack <- stack()
 
@@ -384,61 +433,6 @@ layer.names <- paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_MEAN_
 names(dur.stack) <- layer.names
 
 writeRaster(dur.stack, "Z:/COCA-conf/GIS/MEAN_TRIP_DAYS_BY_SUB_TRIP_ID_AND_PORT.grd", overwrite=T)
-
-
-
-
-
-
-
-
-
-
-
-##### summarize # gear types used per pixel by sub trip id
-
-
-##### make plots
-
-
-
-plot(kept.stack[[75]], col=my.palette, main="Proportion of Kept Catch, Stonington")
-plot(ocean, add=T, border="gray50")
-
-plot(spp.stack[[75]], col=my.palette, main="Species Richness in Kept Catch, Stonington")
-plot(ocean, add=T, border="gray50")
-
-plot(gtons.stack[[75]], col=my.palette, main="Mean Vessel GTONS, Stonington")
-plot(ocean, add=T, border="gray50")
-
-plot(vhp.stack[[75]], col=my.palette, main="Mean Vessel VHP, Stonington")
-plot(ocean, add=T, border="gray50")
-
-plot(vp.num.stack[[75]], col=my.palette, main="Unique Vessels, Stonington")
-plot(ocean, add=T, border="gray50")
-
-plot(trips.stack[[75]], col=my.palette, main="Total Number of Sub Trips, Stonington")
-plot(ocean, add=T, border="gray50")
-
-
-
-
-
-
-
-##### size of footprints relative to all-inclusive footprint
-
-s <- seq(0,92)
-p.5 <- as.numeric(paste(sq.km.out$sq.km[s*5+1]))
-p.75 <- as.numeric(paste(sq.km.out$sq.km[s*5+2]))
-p.9 <- as.numeric(paste(sq.km.out$sq.km[s*5+3]))
-p.95 <- as.numeric(paste(sq.km.out$sq.km[s*5+4]))
-p1 <- as.numeric(paste(sq.km.out$sq.km[s*5+5]))
-
-hist(p1/p.95, col="gray")
-hist(p1/p.9, col="gray")
-hist(p.95/p.9, col="gray")
-
 
 
 
