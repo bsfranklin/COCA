@@ -3,9 +3,9 @@ library(readr)
 library(tidyr)
 library(dplyr)
 
-##### read in ports that are consistently sampled in VTR data
+##### read in ports that are sampled consistently, have sizeable landings, and/or contribute to colburn communities with those traits
 
-ports <- read_csv("Z:/COCA-conf/Output/ports sampled every year 1996-2015.csv")
+ports <- read_csv("Z:/COCA-conf/Output/communities and ports meeting selection criteria.csv")
 
 
 ##### generate list of VTR files in folder and remove the folder with incomplete files
