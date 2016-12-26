@@ -79,7 +79,7 @@ MakeCommunityGearFootprints <- function(df) {
   raster.proportion[] <- NA
   raster.proportion[footprint$ID] <- footprint$PROPORTION_OF_TOTAL
   
-  list(footprint, raster.kept, raster.proportion)
+  out <- list(footprint, raster.kept, raster.proportion)
   names(out) <- c("JGS.DATA", "JGS.KEPT", "JGS.PROPORTION")
   out
   
