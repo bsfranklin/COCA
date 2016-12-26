@@ -77,8 +77,9 @@ ids <- over(locations, filter)
 ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
 
 vtr.data$ID <- ids$ID # assign raster cell number to lat lons
+vtr.data <- drop_na(vtr.data, ID) # drop records outside filter
 
-vtr.data
+
 
 ```
 
