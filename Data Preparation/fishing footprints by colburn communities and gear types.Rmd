@@ -9,7 +9,7 @@ output: html_document
 
 require("knitr")
 knitr::opts_chunk$set(echo = TRUE)
-opts_knit$set(root.dir = "~/GitHub/Climate_Tracking/")
+opts_knit$set(root.dir = "~/GitHub/COCA/")
 
 ```
 
@@ -77,6 +77,8 @@ ids <- over(locations, filter)
 ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
 
 vtr.data$ID <- ids$ID # assign raster cell number to lat lons
+
+vtr.data
 
 ```
 
