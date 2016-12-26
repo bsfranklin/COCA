@@ -80,6 +80,8 @@ MakeCommunityGearFootprints <- function(df) {
   raster.proportion[footprint$ID] <- footprint$PROPORTION_OF_TOTAL
   
   list(footprint, raster.kept, raster.proportion)
+  names(out) <- c("JGS.DATA", "JGS.KEPT", "JGS.PROPORTION")
+  out
   
 }
 
@@ -89,7 +91,7 @@ vtr.data <- vtr.data %>%
 
 
 
-## Make footprints that meet 3 unique vessel ID requirement for port and gear type
+## Make footprints that meet 3 unique vessel ID requirement for community and gear type
 
 MakeNOAASafeCommunityGearFootprints <- function(df, list.column) {
   
@@ -106,7 +108,9 @@ MakeNOAASafeCommunityGearFootprints <- function(df, list.column) {
   safe.raster.kept <- safe * list.column[[2]] 
   safe.raster.proportion <- safe * list.column[[3]] 
   
-  list(footprint.safe, safe.raster.kept, safe.raster.proportion)
+  out <- list(footprint.safe, safe.raster.kept, safe.raster.proportion)
+  names(out) <- c("JGS.SAFE.DATA", "JGS.SAFE.KEPT", "JGS.SAFE.PROPORTION")
+  out
   
 }
 
@@ -139,8 +143,7 @@ shelf.data <- shelf.data %>%
 
 saveRDS(shelf.data, "Z:/COCA-conf/GIS/footprints/VTR fishing footprints shelfwide by gear type 2011-2015.rds")
 
-xx<-stack("Z:/COCA-conf/GIS/footprints/early versions across 2011-2015 by gear type/KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd")
-
+x<-readRDS("Z:/COCA-conf/GIS/footprints/VTR fishing footprints shelfwide by gear type 2011-2015.rds")
 
 
 
