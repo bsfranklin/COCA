@@ -70,16 +70,13 @@ ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster te
 
 vtr.data$ID <- ids$ID # assign raster cell number to lat lons
 
-saveRDS(vtr.data, "I:/jschuetz/Documents/vtr.data.rds")
-
 ```
 
 ## Generate fishing footprints by community and gear type
 
 ```{r}
 
-vtr.data <- readRDS("I:/jschuetz/Documents/vtr.data.rds") %>%
-  group_by(JGS.COMMUNITY, COST_ID) %>%
+vtr.data <- group_by(JGS.COMMUNITY, COST_ID) %>%
   nest()
 
 MakeCommunityGearFootprints <- function(df) {
@@ -136,31 +133,32 @@ vtr.data <- vtr.data %>%
                                                                 vtr.data$JGS.COMMUNITY.GEAR.FOOTPRINTS, 
                                                                 possibly(MakeNOAASafeCommunityGearFootprints, NA)))
 
+saveRDS(vtr.data, "I:/jschuetz/Documents/vtr.data.rds")
+
 ```
 
 ## Generate shelfwide fishing footprints by gear type
 
 ```{r}
 
-shelf.kept <- stack()
-shelf.proportion <- stack()
+shelf.data <- dplyr::select(vtr.data, COST_ID:data) %>%
+  unnest() %>%
+  group_by(COST_ID) %>%
+  nest()
 
-for (g in 1:length(gear.type)){
-  
-  gear.stack <- kept.stack[[seq(gear.type[g], 7 * nrow(community.name), length(gear.type))]]
-  gear.total <- sum(gear.stack, na.rm = T)
-  names(gear.total) <- str_c("SHELFWIDE_GEAR_TYPE_", gear.type[g])
-  shelf.kept <- stack(shelf.kept, gear.total)
-  
-  layer.total <- cellStats(gear.total, stat = "sum", na.rm = T)
-  gear.proportion <- gear.total/layer.total
-  names(gear.proportion) <- str_c("SHELFWIDE_GEAR_TYPE_", gear.type[g])
-  shelf.proportion <- stack(shelf.proportion, gear.proportion)
-  
-}
+shelf.data <- shelf.data %>%
+  mutate(JGS.SHELF.GEAR.FOOTPRINTS = purrr::map(shelf.data$data, 
+                                                possibly(MakeCommunityGearFootprints, NA)))
 
-writeRaster(shelf.kept, "Z:/COCA-conf/GIS/footprints/KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
-writeRaster(shelf.prop, "Z:/COCA-conf/GIS/footprints/PROPORTION_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
+
+shelf.data <- shelf.data %>%
+  mutate(JGS.NOAA.SAFE.SHELF.GEAR.FOOTPRINTS = purrr::map2(shelf.data$data,
+                                                           shelf.data$JGS.SHELF.GEAR.FOOTPRINTS, 
+                                                           possibly(MakeNOAASafeCommunityGearFootprints, NA)))
+
+saveRDS(vtr.data, "I:/jschuetz/Documents/shelf.data.rds")
+
+
 
 ```
 
