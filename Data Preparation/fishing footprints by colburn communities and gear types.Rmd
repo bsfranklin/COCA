@@ -15,7 +15,7 @@ opts_knit$set(root.dir = "~/GitHub/Climate_Tracking/")
 
 ## load libraries, communities, gear types, and spatial templates
 
-```{r}
+```{r message=FALSE}
 
 library(raster)
 library(spatstat) 
@@ -40,11 +40,16 @@ gear.types <- read.csv("Z:/COCA-conf/Output/Aggregated_Gear_Codes_from_BK.csv") 
   dplyr::select(GEAR_CODE, COST_ID) %>%
   filter(!duplicated(GEAR_CODE))
 
+communities
+sst
+filter
+gear.types
+
 ```  
 
-## Load, filter, and aggregate VTR data
+## Load VTR data, filter years, join with community and gear data, and summarize
 
-```{r}
+```{r message=FALSE}
 
 vtr.data <- readRDS("Z:/COCA-conf/VTR and permit/VTR_data_from_focal_ports.rds") %>%
   drop_na(CALC_LAT_DEG) %>%
@@ -52,15 +57,18 @@ vtr.data <- readRDS("Z:/COCA-conf/VTR and permit/VTR_data_from_focal_ports.rds")
   filter(VTR_YEAR > 2010, VTR_YEAR <2016) %>%
   left_join(gear.types) %>%
   left_join(communities) %>%
+  drop_na(COST_ID) %>%
   group_by(SUB_TRIP_ID, LAT_JGS, LON_JGS, JGS.COMMUNITY, COST_ID, VP_NUM) %>% # COST_ID is BRIAN KENNEDY'S GEAR TYPE CLASSIFICATION
   summarize(KEPT = sum(KEPT, na.rm = T)) %>%
   filter(LAT_JGS < 90) # filter outliers
+
+vtr.data
 
 ```
 
 ## Filter locations that are within 1km of Natural Earth ocean and assign pixel IDs to locations
 
-```{r}
+```{r message=FALSE}
 
 locations <- SpatialPoints(coords = vtr.data[, c("LON_JGS", "LAT_JGS")])
 proj4string(locations) <- proj4string(sst)
@@ -74,9 +82,9 @@ vtr.data$ID <- ids$ID # assign raster cell number to lat lons
 
 ## Generate fishing footprints by community and gear type
 
-```{r}
+```{r message=FALSE}
 
-vtr.data <- group_by(JGS.COMMUNITY, COST_ID) %>%
+vtr.data <- group_by(vtr.data, JGS.COMMUNITY, COST_ID) %>%
   nest()
 
 MakeCommunityGearFootprints <- function(df) {
@@ -105,7 +113,7 @@ vtr.data <- vtr.data %>%
 
 ```
 
-# Make footprints that meet 3 unique vessel ID requirement for port and gear type
+## Make footprints that meet 3 unique vessel ID requirement for port and gear type
 
 ```{r}
 
@@ -133,13 +141,13 @@ vtr.data <- vtr.data %>%
                                                                 vtr.data$JGS.COMMUNITY.GEAR.FOOTPRINTS, 
                                                                 possibly(MakeNOAASafeCommunityGearFootprints, NA)))
 
-saveRDS(vtr.data, "I:/jschuetz/Documents/vtr.data.rds")
+saveRDS(vtr.data, "Z:/COCA-conf/GIS/footprints/VTR fishing footprints by community and gear type 2011-2015.rds")
 
 ```
 
 ## Generate shelfwide fishing footprints by gear type
 
-```{r}
+```{r message=FALSE}
 
 shelf.data <- dplyr::select(vtr.data, COST_ID:data) %>%
   unnest() %>%
@@ -150,242 +158,15 @@ shelf.data <- shelf.data %>%
   mutate(JGS.SHELF.GEAR.FOOTPRINTS = purrr::map(shelf.data$data, 
                                                 possibly(MakeCommunityGearFootprints, NA)))
 
-
 shelf.data <- shelf.data %>%
   mutate(JGS.NOAA.SAFE.SHELF.GEAR.FOOTPRINTS = purrr::map2(shelf.data$data,
                                                            shelf.data$JGS.SHELF.GEAR.FOOTPRINTS, 
                                                            possibly(MakeNOAASafeCommunityGearFootprints, NA)))
 
-saveRDS(vtr.data, "I:/jschuetz/Documents/shelf.data.rds")
+saveRDS(shelf.data, "Z:/COCA-conf/GIS/footprints/VTR fishing footprints shelfwide by gear type 2011-2015.rds")
 
-
+xx<-stack("Z:/COCA-conf/GIS/footprints/KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd")
 
 ```
-
-
-
-
-
-##### make footprints that meet 3 unique vessel ID requirement shelfwide by gear type
-
-vp.nums.shelf <- group_by(locations@data, COST_ID, ID) %>%
-  summarize(N_VP_NUMS_IN_PIXEL = n_distinct(VP_NUM)) %>%
-  filter(N_VP_NUMS_IN_PIXEL > 2) %>%
-  mutate(MEETS_CONFIDENTIALITY = 1)
-
-vp.num.shelf.stack <- stack()
-
-for (g in 1:7){
-    
-    vp.nums <- filter(vp.nums.shelf, COST_ID == g)
-    raster.vp.nums <- sst
-    raster.vp.nums[] <- NA
-    raster.vp.nums[vp.nums$ID] <- vp.nums$MEETS_CONFIDENTIALITY
-    vp.num.shelf.stack <- stack(vp.num.shelf.stack, raster.vp.nums)
-  
-}
-
-kept.shelf.safe <- stack(vp.num.shelf.stack * shelf.kept)
-layer.names <- paste(rep(str_c("NOAA_SAFE_SHELFWIDE_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
-names(kept.shelf.safe) <- layer.names
-writeRaster(kept.shelf.safe, "Z:/COCA-conf/GIS/footprints/NOAA_SAFE_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
-
-proportion.shelf.safe <- stack(vp.num.shelf.stack * shelf.prop)
-layer.names <- paste(rep(str_c("NOAA_SAFE_SHELFWIDE_GEAR_TYPE_"), each = 7), seq(1,7), sep="")
-names(proportion.shelf.safe) <- layer.names
-writeRaster(proportion.shelf.safe, "Z:/COCA-conf/GIS/footprints/NOAA_SAFE_PROPORTION_KEPT_CATCH_SHELFWIDE_BY_GEAR_TYPE_2011-2015.grd", overwrite=T)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###################################################################################################
-
-##### EVERYTHING BELOW HERE IS JUNK...BUT IT MIGHT GET YOU STARTED ON SOME OTHER INTERESTING THINGS
-
-###################################################################################################
-
-
-trips.stack <- stack()
-
-for (y in 1:length(ports$PORT_CODE)){
-  
-  trips <- trips.all[trips.all$PORT_CODE == ports$PORT_CODE[y],]
-  raster.trips <- sst
-  raster.trips[] <- NA
-  raster.trips[trips$ID] <- trips$SUB_TRIP_ID
-  trips.stack <- stack(trips.stack, raster.trips)
-  
-}
-
-layer.names <- paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "TOTAL_SUB_TRIPS", sep="")
-names(trips.stack) <- layer.names
-
-writeRaster(trips.stack, "Z:/COCA-conf/GIS/TOTAL_SUB_TRIPS_BY_PORT.grd", overwrite=T)
-
-
-#####
-
-vhp.stack <- stack()
-
-for (y in 1:length(ports$PORT_CODE)){
-  
-  vhp <- vhps.all[vhps.all$PORT_CODE == ports$PORT_CODE[y],]
-  raster.vhps <- sst
-  raster.vhps[] <- NA
-  raster.vhps[vhp$ID] <- vhp$VHP
-  vhp.stack <- stack(vhp.stack, raster.vhps)
-  
-}
-
-layer.names <- paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_MEAN_VHP_BY_SUB_TRIP_ID", sep="")
-names(vhp.stack) <- layer.names
-
-writeRaster(vhp.stack, "Z:/COCA-conf/GIS/MEAN_VHP_BY_SUB_TRIP_ID_AND_PORT.grd", overwrite=T)
-
-
-#####
-
-gtons.stack <- stack()
-
-for (y in 1:length(ports$PORT_CODE)){
-  
-  gtons <- gtons.all[gtons.all$PORT_CODE == ports$PORT_CODE[y],]
-  raster.gtons <- sst
-  raster.gtons[] <- NA
-  raster.gtons[gtons$ID] <- gtons$GTON
-  gtons.stack <- stack(gtons.stack, raster.gtons)
-  
-}
-
-layer.names <- paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_MEAN_GTONS_BY_SUB_TRIP_ID", sep="")
-names(gtons.stack) <- layer.names
-
-writeRaster(gtons.stack, "Z:/COCA-conf/GIS/MEAN_GTONS_BY_SUB_TRIP_ID_AND_PORT.grd", overwrite=T)
-
-
-
-##### summarize # species taken per pixel
-
-
-catch.locs.by.port <- NULL
-
-for (d in 1996:2015){
-  
-  vtr.data <- read.csv(paste("Mills_", d, " VTR.csv", sep=""))
-  
-  my.ports <- match(vtr.data$PORT_CODE, ports$PORT_CODE)
-  my.data <- vtr.data[!is.na(my.ports),]
-  my.data$LAT_JGS <- my.data$CALC_LAT_DEG + my.data$CALC_LAT_MIN/60
-  my.data$LON_JGS <- -1*(my.data$CALC_LON_DEG + my.data$CALC_LON_MIN/60)
-  
-  temp <- aggregate(KEPT ~ SUB_TRIP_ID + LAT_JGS + LON_JGS + PORT_CODE + SVSPP + VTR_YEAR, my.data, sum)
-  catch.locs.by.port <- rbind(catch.locs.by.port, temp)
-  
-}
-
-catch.locs.by.port <- catch.locs.by.port[catch.locs.by.port$LAT_JGS<90,] # latitudes greater than 90 create error
-locations <- SpatialPointsDataFrame(coords=catch.locs.by.port[, c(3,2)], data=catch.locs.by.port[,c(1,4:7)])
-proj4string(locations) <- proj4string(sst)
-ids <- over(locations, filter)
-ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
-locations@data$ID <- ids$ID # assign raster cell number to lat lons
-
-spp.list <- aggregate(KEPT ~ ID + PORT_CODE + SVSPP, locations, length) #number of sub trips in each pixel where a spp was caught
-spp.all <- aggregate(SVSPP ~ ID + PORT_CODE, spp.list, length) # number of species caught in each pixel
-
-
-#####
-
-spp.stack <- stack()
-
-for (y in 1:length(ports$PORT_CODE)){
-  
-  spp <- spp.all[spp.all$PORT_CODE == ports$PORT_CODE[y],]
-  raster.spp <- sst
-  raster.spp[] <- NA
-  raster.spp[spp$ID] <- spp$SVSPP
-  spp.stack <- stack(spp.stack, raster.spp)
-  
-}
-
-layer.names <- paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_KEPT_CATCH_SPECIES_RICHNESS", sep="")
-names(spp.stack) <- layer.names
-
-writeRaster(spp.stack, "Z:/COCA-conf/GIS/KEPT_CATCH_SPECIES_RICHNESS_BY_PORT.grd", overwrite=T)
-
-
-
-##### summarize duration of trips for catch in each pixel
-
-catch.locs.by.port <- NULL
-
-for (d in 1996:2015){
-  
-  vtr.data <- read.csv(paste("Mills_", d, " VTR.csv", sep=""))
-  
-  my.ports <- match(vtr.data$PORT_CODE, ports$PORT_CODE)
-  my.data <- vtr.data[!is.na(my.ports),]
-  my.data$LAT_JGS <- my.data$CALC_LAT_DEG + my.data$CALC_LAT_MIN/60
-  my.data$LON_JGS <- -1*(my.data$CALC_LON_DEG + my.data$CALC_LON_MIN/60)
-  
-  library(timeDate) # convert date fields to datetime fields
-  
-  my.data$DATETIME_SAIL<- strptime(my.data$DATE_SAIL, format = "%m/%d/%Y")
-  my.data$DATETIME_LAND<- strptime(my.data$DATE_LAND, format = "%m/%d/%Y")
-  my.data$TRIP_DAYS<- (as.integer(my.data$DATETIME_LAND - my.data$DATETIME_SAIL)/86400) + 1
-  my.data$DAY_OF_YEAR <- (my.data$DATETIME_SAIL)$yday + 1
-  
-  temp <- aggregate(TRIP_DAYS ~ SUB_TRIP_ID + LAT_JGS + LON_JGS + PORT_CODE + VTR_YEAR, my.data, min)
-  catch.locs.by.port <- rbind(catch.locs.by.port, temp)
-  
-}
-
-catch.locs.by.port <- catch.locs.by.port[catch.locs.by.port$LAT_JGS<90,] # latitudes greater than 90 create error
-locations <- SpatialPointsDataFrame(coords=catch.locs.by.port[, c(3,2)], data=catch.locs.by.port[,c(1,4:6)])
-proj4string(locations) <- proj4string(sst)
-ids <- over(locations, filter)
-ids <- ids + 1 # add 1 so that polygon feature ids and cell numbers in raster template are the same
-locations@data$ID <- ids$ID # assign raster cell number to lat lons
-#locations
-
-dur.all <- aggregate(TRIP_DAYS ~ ID + PORT_CODE, locations, mean) # mean TRIP_DAYS for all sub trips within pixel
-
-dur.stack <- stack()
-
-for (y in 1:length(ports$PORT_CODE)){
-  
-  dur <- dur.all[dur.all$PORT_CODE == ports$PORT_CODE[y],]
-  raster.dur <- sst
-  raster.dur[] <- NA
-  raster.dur[dur$ID] <- dur$TRIP_DAYS
-  dur.stack <- stack(dur.stack, raster.spp)
-  
-}
-
-layer.names <- paste(ports$PORT_CODE, "_", ports$PORT, "_", ports$STATE, "_MEAN_TRIP_DAYS_BY_SUB_TRIP_ID", sep="")
-names(dur.stack) <- layer.names
-
-writeRaster(dur.stack, "Z:/COCA-conf/GIS/MEAN_TRIP_DAYS_BY_SUB_TRIP_ID_AND_PORT.grd", overwrite=T)
-
-
-
-
-
-
-
-
 
 
