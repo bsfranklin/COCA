@@ -144,5 +144,3 @@ shelf.data <- shelf.data %>%
 saveRDS(shelf.data, "Z:/COCA-conf/GIS/footprints/VTR fishing footprints shelfwide by gear type 2011-2015.rds")
 
 
-
-
